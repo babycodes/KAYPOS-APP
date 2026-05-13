@@ -66,38 +66,36 @@ git clone git@github.com:babycodes/KAYPOS.git
 cd KAYPOS
 ```
 
-### 2. Install dependencies
+### 2. Jalankan (otomatis install + seed + start)
 ```bash
-# Backend
-cd backend
-bun install
-
-# Frontend
-cd ../frontend
-npm install
+./start.sh
 ```
+> Script ini otomatis: install dependencies → seed database (jika pertama kali) → jalankan backend & frontend
 
-### 3. Setup database
+### 3. Restart (tanpa reset database)
 ```bash
-cd ../backend
-bun run seed
+./restart.sh
 ```
+> Hanya restart backend & frontend, data tetap aman
 
-### 4. Jalankan
-```bash
-# Terminal 1 — Backend
-cd backend
-bun run dev
-
-# Terminal 2 — Frontend
-cd frontend
-npm run dev
-```
-
-### 5. Akses
+### 4. Akses
 ```
 Lokal:    http://localhost:5173
 Jaringan: http://<IP-SERVER>:5173  (lihat output backend)
+```
+
+### Manual (opsional)
+```bash
+# Install manual
+cd backend && bun install
+cd ../frontend && npm install
+
+# Seed database (hanya pertama kali)
+cd ../backend && bun run seed
+
+# Jalankan terpisah
+cd backend && bun run dev      # Terminal 1
+cd frontend && npm run dev     # Terminal 2
 ```
 
 ---
@@ -173,6 +171,8 @@ Jaringan: http://<IP-SERVER>:5173  (lihat output backend)
 
 ```
 KAYPOS/
+├── start.sh               # 🚀 Jalankan pertama kali
+├── restart.sh             # 🔄 Restart tanpa reset DB
 ├── backend/
 │   ├── src/
 │   │   ├── db/           # Schema, seed, database
