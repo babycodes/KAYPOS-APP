@@ -44,7 +44,6 @@
 		form.category_id = catId;
 		const cat = categories.find((c: any) => c.id === catId);
 		availableUnits = (cat?.units || []).map((u: any) => u.unit_name);
-		// Keep existing unit prices that match available units
 		unitPrices = unitPrices.filter(u => availableUnits.includes(u.unit_name));
 	}
 
@@ -97,10 +96,6 @@
 	}
 
 	function fmtPrice(n: number) { return n < 1 && n > 0 ? `Rp ${n.toFixed(2)}` : `Rp ${Math.round(n).toLocaleString('id-ID')}`; }
-	function getUnitInfo(p: any): string {
-		if (!p.units?.length) return '-';
-		return p.units.map((u: any) => `${u.qty_per_unit > 1 ? u.qty_per_unit : ''}${u.unit_name}=${fmtPrice(u.price)}`).join(', ');
-	}
 </script>
 
 <div class="space-y-4">
@@ -122,7 +117,44 @@
 			class="w-full h-10 pl-10 pr-4 rounded-xl bg-md-surface-container text-sm text-md-on-surface border border-md-outline-variant/50 focus:border-md-primary focus:outline-none" />
 	</div>
 
-	<div class="rounded-2xl bg-md-surface-bright border border-md-outline-variant overflow-hidden">
+	<!-- Mobile Card Layout -->
+	<div class="md:hidden space-y-2">
+		{#each pagedProducts as p (p.id)}
+			<div class="p-3 rounded-xl bg-md-surface-bright border border-md-outline-variant">
+				<div class="flex items-start justify-between gap-2 mb-2">
+					<div class="min-w-0 flex-1">
+						<div class="font-bold text-sm text-md-on-surface truncate">{p.name}</div>
+						<div class="text-[10px] text-md-on-surface-variant">{p.category_name || '-'}{#if p.barcode} · <span class="font-mono">{p.barcode}</span>{/if}</div>
+					</div>
+					<div class="text-right shrink-0">
+						<div class="text-xs font-bold tabular-nums {p.stock_quantity <= (p.min_stock_alert || 0) && p.min_stock_alert > 0 ? 'text-md-error' : 'text-md-on-surface'}">Stok: {Math.round(p.stock_quantity)}</div>
+					</div>
+				</div>
+				{#if p.units?.length > 0}
+					<div class="flex flex-wrap gap-1 mb-2">
+						{#each p.units as u}
+							<span class="px-2 py-0.5 rounded-md bg-md-primary-container/30 text-[10px] font-semibold text-md-primary">
+								{u.qty_per_unit > 1 ? u.qty_per_unit + ' ' : ''}{u.unit_name} = {fmtPrice(u.price)}
+							</span>
+						{/each}
+					</div>
+				{/if}
+				<div class="flex gap-1.5">
+					<button use:ripple class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold bg-md-primary-container/50 text-md-primary" onclick={() => openEdit(p)}>Edit</button>
+					<button use:ripple class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold {p.is_active ? 'bg-md-surface-container text-md-on-surface-variant' : 'bg-md-secondary-container/50 text-md-secondary'}" onclick={() => toggleActive(p)}>
+						{p.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+					</button>
+					<button use:ripple class="py-1.5 px-3 rounded-lg text-[11px] font-semibold bg-md-error-container/50 text-md-error" onclick={() => deleteTarget = p}>Hapus</button>
+				</div>
+			</div>
+		{/each}
+		{#if pagedProducts.length === 0}
+			<div class="text-center py-8 text-sm text-md-on-surface-variant">{searchQuery ? 'Tidak ditemukan' : 'Belum ada produk'}</div>
+		{/if}
+	</div>
+
+	<!-- Desktop Table -->
+	<div class="hidden md:block rounded-2xl bg-md-surface-bright border border-md-outline-variant overflow-hidden">
 		<div class="overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead><tr class="bg-md-surface-container text-md-on-surface-variant text-left">
@@ -139,7 +171,7 @@
 								<div class="font-medium">{p.name}</div>
 								{#if p.barcode}<div class="text-[10px] text-md-on-surface-variant font-mono">{p.barcode}</div>{/if}
 							</td>
-							<td class="px-4 py-3 text-md-on-surface-variant">{p.category_icon} {p.category_name || '-'}</td>
+							<td class="px-4 py-3 text-md-on-surface-variant">{p.category_name || '-'}</td>
 							<td class="px-4 py-3">
 								<div class="space-y-0.5">
 									{#each (p.units || []) as u}
@@ -184,16 +216,28 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Mobile Pagination -->
+	{#if totalPages > 1}
+		<div class="md:hidden flex items-center justify-between">
+			<span class="text-xs text-md-on-surface-variant">{(currentPage-1)*perPage+1}–{Math.min(currentPage*perPage, filteredProducts.length)} dari {filteredProducts.length}</span>
+			<div class="flex gap-1">
+				<button use:ripple disabled={currentPage<=1} class="w-8 h-8 rounded-lg text-xs font-bold bg-md-surface-container disabled:opacity-30" onclick={() => currentPage--}>‹</button>
+				<span class="w-8 h-8 rounded-lg text-xs font-bold flex items-center justify-center bg-md-primary text-md-on-primary">{currentPage}</span>
+				<button use:ripple disabled={currentPage>=totalPages} class="w-8 h-8 rounded-lg text-xs font-bold bg-md-surface-container disabled:opacity-30" onclick={() => currentPage++}>›</button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Product Form -->
 {#if showForm}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" transition:fade={{ duration: 150 }} onclick={(e) => { if (e.target === e.currentTarget) showForm = false; }}>
-		<div class="w-full max-w-xl bg-md-surface-bright rounded-2xl p-6 elevation-3 max-h-[85vh] overflow-y-auto no-scrollbar">
+	<div class="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" transition:fade={{ duration: 150 }} onclick={(e) => { if (e.target === e.currentTarget) showForm = false; }}>
+		<div class="w-full max-w-xl bg-md-surface-bright rounded-t-2xl md:rounded-2xl p-5 elevation-3 max-h-[90vh] overflow-y-auto no-scrollbar">
 			<h3 class="text-lg font-bold mb-4">{editId ? 'Edit' : 'Tambah'} Produk</h3>
-			<div class="grid grid-cols-2 gap-3 mb-4">
-				<div class="col-span-2">
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+				<div class="sm:col-span-2">
 					<label class="text-xs font-semibold text-md-on-surface-variant block mb-1">Nama Produk</label>
 					<input type="text" bind:value={form.name} class="w-full h-12 px-4 rounded-xl bg-md-surface-container border border-md-outline-variant text-md-on-surface focus:border-md-primary focus:outline-none" />
 				</div>
@@ -224,33 +268,27 @@
 				<div class="flex justify-between items-center mb-2">
 					<h4 class="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wider">💰 Harga per Satuan</h4>
 					{#if availableUnits.filter(u => !unitPrices.find(up => up.unit_name === u)).length > 0}
-						<button use:ripple class="text-xs font-semibold text-md-primary px-3 py-1 rounded-lg hover:bg-md-primary-container/30" onclick={addUnitPrice}>+ Tambah Satuan</button>
+						<button use:ripple class="text-xs font-semibold text-md-primary px-3 py-1 rounded-lg hover:bg-md-primary-container/30" onclick={addUnitPrice}>+ Tambah</button>
 					{/if}
 				</div>
-				<p class="text-[11px] text-md-on-surface-variant/70 mb-3">Pilih satuan dari dropdown, isi jumlah dan harga. Contoh: 250 gram = Rp1000</p>
-
 				{#if unitPrices.length === 0}
-					<p class="text-sm text-md-on-surface-variant/50 text-center py-3">Belum ada harga. Klik "+ Tambah Satuan" untuk menambah.</p>
+					<p class="text-sm text-md-on-surface-variant/50 text-center py-3">Belum ada harga. Klik "+ Tambah"</p>
 				{:else}
 					<div class="space-y-2">
-						<!-- Header -->
-						<div class="grid grid-cols-[1fr_80px_1fr_36px] gap-2 text-[10px] font-semibold text-md-on-surface-variant uppercase">
-							<span>Satuan</span><span>Jumlah</span><span>Harga (Rp)</span><span></span>
-						</div>
 						{#each unitPrices as unit, i}
-							<div class="grid grid-cols-[1fr_80px_1fr_36px] gap-2 items-center">
-								<select bind:value={unit.unit_name} class="h-10 px-3 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-md-on-surface">
+							<div class="flex gap-2 items-center">
+								<select bind:value={unit.unit_name} class="h-10 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-md-on-surface flex-1">
 									{#each availableUnits as au}
 										{#if au === unit.unit_name || !unitPrices.find(up => up.unit_name === au)}
 											<option value={au}>{au}</option>
 										{/if}
 									{/each}
 								</select>
-								<input type="number" bind:value={unit.qty_per_unit} min="0.01" step="any"
-									class="h-10 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-md-on-surface text-center tabular-nums focus:border-md-primary focus:outline-none" />
-								<input type="number" bind:value={unit.price} min="0" step="any"
-									class="h-10 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-md-on-surface text-right tabular-nums font-semibold focus:border-md-primary focus:outline-none" />
-								<button use:ripple class="w-9 h-10 rounded-lg bg-md-error-container/50 text-md-error flex items-center justify-center text-xs" onclick={() => removeUnitPrice(i)}>✕</button>
+								<input type="number" bind:value={unit.qty_per_unit} min="0.01" step="any" placeholder="Qty"
+									class="h-10 w-16 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-center tabular-nums focus:border-md-primary focus:outline-none" />
+								<input type="number" bind:value={unit.price} min="0" step="any" placeholder="Harga"
+									class="h-10 flex-1 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-right tabular-nums font-semibold focus:border-md-primary focus:outline-none" />
+								<button use:ripple class="w-9 h-10 rounded-lg bg-md-error-container/50 text-md-error flex items-center justify-center text-xs shrink-0" onclick={() => removeUnitPrice(i)}>✕</button>
 							</div>
 						{/each}
 					</div>
