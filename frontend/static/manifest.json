@@ -1,39 +1,53 @@
 {
+  "id": "kaypos-pwa",
   "name": "KAYPOS - Point of Sale",
   "short_name": "KAYPOS",
   "description": "Sistem POS Modern — Cepat, Offline-Ready, Multi-Device",
-  "start_url": "/kasir",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#1a1a2e",
-  "background_color": "#0f0f1a",
+  "theme_color": "#2563eb",
+  "background_color": "#f5f5f5",
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "Kasir",
       "url": "/kasir",
-      "description": "Buka halaman kasir"
+      "description": "Buka halaman kasir",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Admin",
+      "name": "Admin Panel",
       "url": "/admin",
-      "description": "Buka admin panel"
+      "description": "Buka admin panel",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -312,7 +312,7 @@
 
 <div class="flex flex-col bg-md-surface overflow-hidden kasir-shell">
 	<!-- App Bar -->
-	<header class="shrink-0 bg-md-primary px-4 flex items-center gap-3 safe-top h-12">
+	<header class="shrink-0 bg-md-primary px-4 flex items-center gap-3 safe-top min-h-[48px]">
 		<div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center"><span class="text-white font-black text-xs">K</span></div>
 		<span class="font-extrabold text-white text-lg tracking-tight">KAYPOS</span>
 	</header>
@@ -431,7 +431,7 @@
 
 
 	<!-- Mobile Floating Bottom Nav -->
-	<nav class="md:hidden fixed bottom-3 inset-x-3 z-20 bg-md-surface-bright/95 backdrop-blur-lg rounded-2xl px-2 pb-[env(safe-area-inset-bottom)] flex items-center justify-around h-[60px] elevation-3 border border-md-outline-variant/20">
+	<nav class="md:hidden fixed z-20 bg-md-surface-bright/95 backdrop-blur-lg rounded-2xl px-2 flex items-center justify-around h-[60px] elevation-3 border border-md-outline-variant/20 safe-bottom-nav">
 		<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl transition-colors {showDashboard ? 'text-md-primary' : 'text-md-on-surface-variant'}" onclick={() => { showDashboard = !showDashboard; if (showDashboard) loadDashboard(); }}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
 			<span class="text-[9px] font-semibold">Rekap</span>
@@ -682,9 +682,14 @@
 {/if}
 
 <style>
-	.kasir-shell { height: 100dvh; height: 100vh; } /* dvh with vh fallback */
+	.kasir-shell { height: 100dvh; height: 100vh; }
 	@supports (height: 100dvh) { .kasir-shell { height: 100dvh; } }
 	@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 	.animate-slide-up { animation: slideUp 0.25s ease-out; }
-	.safe-top { padding-top: max(env(safe-area-inset-top, 0px), 8px); }
+	.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+	.safe-bottom-nav {
+		bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+		left: 12px;
+		right: 12px;
+	}
 </style>
