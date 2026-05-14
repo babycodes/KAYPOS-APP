@@ -195,11 +195,25 @@
 		else { addToCart(product, product.units?.[0]?.unit_name || 'pcs', 1); }
 	}
 
-	function addToCart(product: any, unitName: string, quantity: number) {
+	// Calculate qty reserved in held/parked carts for a product
+	function getHeldQty(productId: number): number {
+		return heldCarts.reduce((sum, hc) => {
+			const items = hc.cart_data || [];
+			return sum + items.filter((i: any) => i.product?.id === productId).reduce((s: number, i: any) => s + (i.quantity || 0), 0);
+		}, 0);
+	}
+
+	function getAvailableStock(product: any): number {
 		const stock = product.stock_quantity ?? Infinity;
+		if (stock === Infinity) return Infinity;
+		return Math.max(0, stock - getHeldQty(product.id));
+	}
+
+	function addToCart(product: any, unitName: string, quantity: number) {
+		const available = getAvailableStock(product);
 		const totalInCart = cart.filter((i: any) => i.product.id === product.id).reduce((s: number, i: any) => s + i.quantity, 0);
-		if (totalInCart + quantity > stock) {
-			const remaining = Math.max(0, stock - totalInCart);
+		if (totalInCart + quantity > available) {
+			const remaining = Math.max(0, available - totalInCart);
 			if (remaining <= 0) { showToast(`⚠️ Stok ${product.name} habis!`); return; }
 			quantity = remaining;
 			showToast(`⚠️ Stok terbatas, hanya ${remaining} tersisa`);
@@ -210,7 +224,7 @@
 		unitSelectorProduct = null;
 	}
 
-	function getStockForItem(i: number) { return cart[i]?.product?.stock_quantity ?? Infinity; }
+	function getStockForItem(i: number) { return getAvailableStock(cart[i]?.product || {}); }
 	function getTotalCartQty(productId: number) { return cart.filter((c: any) => c.product.id === productId).reduce((s: number, c: any) => s + c.quantity, 0); }
 
 	function incrementItem(i: number) {

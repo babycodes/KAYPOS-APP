@@ -14,12 +14,15 @@
 	async function load() { inventory = await api.get('/inventory'); }
 
 	let filtered = $derived(() => {
-		let items = filter === 'low' ? inventory.filter((i: any) => i.min_stock_alert > 0 && i.stock_quantity <= i.min_stock_alert) : inventory;
+		let items = inventory;
+		if (filter === 'low') items = inventory.filter((i: any) => i.min_stock_alert > 0 && i.stock_quantity <= i.min_stock_alert && i.stock_quantity > 0);
+		else if (filter === 'empty') items = inventory.filter((i: any) => i.stock_quantity <= 0);
 		if (searchQuery) items = items.filter((i: any) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
 		return items;
 	});
 
-	let lowCount = $derived(inventory.filter((i: any) => i.min_stock_alert > 0 && i.stock_quantity <= i.min_stock_alert).length);
+	let lowCount = $derived(inventory.filter((i: any) => i.min_stock_alert > 0 && i.stock_quantity <= i.min_stock_alert && i.stock_quantity > 0).length);
+	let emptyCount = $derived(inventory.filter((i: any) => i.stock_quantity <= 0).length);
 
 	function openEdit(item: any) {
 		editId = item.product_id;
@@ -36,9 +39,10 @@
 
 <div class="space-y-4">
 	<div class="flex flex-wrap gap-2 items-center justify-between">
-		<div class="flex gap-2">
+		<div class="flex flex-wrap gap-2">
 			<button use:ripple class="px-4 py-2 rounded-full text-sm font-medium {filter === 'all' ? 'bg-md-primary text-md-on-primary' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => filter = 'all'}>Semua ({inventory.length})</button>
-			<button use:ripple class="px-4 py-2 rounded-full text-sm font-medium {filter === 'low' ? 'bg-md-error text-md-on-error' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => filter = 'low'}>⚠️ Stok Rendah ({lowCount})</button>
+			<button use:ripple class="px-4 py-2 rounded-full text-sm font-medium {filter === 'low' ? 'bg-md-tertiary text-md-on-tertiary' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => filter = 'low'}>⚠️ Stok Rendah ({lowCount})</button>
+			<button use:ripple class="px-4 py-2 rounded-full text-sm font-medium {filter === 'empty' ? 'bg-md-error text-md-on-error' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => filter = 'empty'}>🚫 Stok Habis ({emptyCount})</button>
 		</div>
 	</div>
 
@@ -89,7 +93,7 @@
 			</div>
 		{/each}
 		{#if filtered().length === 0}
-			<div class="text-center py-8 text-sm text-md-on-surface-variant">{filter === 'low' ? 'Semua stok aman 👍' : 'Tidak ada data'}</div>
+			<div class="text-center py-8 text-sm text-md-on-surface-variant">{filter === 'low' ? 'Semua stok aman 👍' : filter === 'empty' ? 'Tidak ada stok habis 👍' : 'Tidak ada data'}</div>
 		{/if}
 	</div>
 

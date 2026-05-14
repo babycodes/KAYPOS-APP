@@ -26,9 +26,20 @@ transactions.post("/", async (c) => {
       .get(item.product_id, item.unit_name) as any;
     if (!unit) return c.json({ error: `Unit '${item.unit_name}' tidak tersedia untuk ${product.name}` }, 400);
 
-    // Check stock availability
+    // Check stock availability (including held cart reservations)
     const inv = db.prepare("SELECT stock_quantity FROM inventory WHERE product_id = ?").get(item.product_id) as any;
-    const availableStock = inv?.stock_quantity ?? 0;
+    let availableStock = inv?.stock_quantity ?? 0;
+    // Subtract qty reserved in held carts
+    const heldRows = db.prepare("SELECT cart_data FROM held_carts").all() as any[];
+    for (const hc of heldRows) {
+      try {
+        const cartItems = JSON.parse(hc.cart_data);
+        for (const ci of cartItems) {
+          if (ci.product?.id === item.product_id) availableStock -= (ci.quantity || 0);
+        }
+      } catch {}
+    }
+    availableStock = Math.max(0, availableStock);
     if (item.quantity > availableStock) {
       return c.json({ error: `Stok ${product.name} tidak cukup. Tersisa: ${Math.round(availableStock)}, diminta: ${item.quantity}` }, 400);
     }

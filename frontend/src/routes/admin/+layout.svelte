@@ -151,7 +151,7 @@
 		</aside>
 
 		<div class="flex-1 flex flex-col overflow-hidden">
-			<header class="px-4 md:px-6 py-3 bg-md-surface-bright border-b border-md-outline-variant flex items-center justify-between min-h-[64px] shrink-0 gap-3">
+			<header class="px-4 md:px-6 py-3 bg-md-surface-bright border-b border-md-outline-variant flex items-center justify-between min-h-[64px] shrink-0 gap-3" style="padding-top: max(env(safe-area-inset-top, 0px), 12px)">
 				<!-- Mobile hamburger -->
 				<button use:ripple class="md:hidden w-10 h-10 rounded-xl bg-md-surface-container flex items-center justify-center shrink-0" onclick={() => sidebarOpen = true}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
