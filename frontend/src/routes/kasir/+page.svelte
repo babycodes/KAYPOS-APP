@@ -457,7 +457,7 @@
 		<!-- Products (pb-16 on mobile for fixed bottom nav) -->
 		<div class="flex-1 overflow-y-auto px-2 md:px-4 pt-2 pb-20 md:pb-2 no-scrollbar">
 			<div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
-				{#each filteredProducts as product (product.id)}<ProductCard {product} onSelect={handleProductSelect} />{/each}
+				{#each filteredProducts as product (product.id)}<ProductCard {product} onSelect={handleProductSelect} heldQty={getHeldQty(product.id)} />{/each}
 			</div>
 			{#if filteredProducts.length === 0}<div class="text-center py-16 text-md-on-surface-variant"><div class="text-3xl mb-2">🔍</div><p class="font-medium text-sm">Produk tidak ditemukan</p></div>{/if}
 		</div>
