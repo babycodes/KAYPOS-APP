@@ -382,14 +382,6 @@
 	<header class="shrink-0 bg-md-primary px-4 flex items-center gap-3 safe-top min-h-[48px]">
 		<div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center"><span class="text-white font-black text-xs">K</span></div>
 		<span class="font-extrabold text-white text-lg tracking-tight">KAYPOS</span>
-		<div class="flex-1"></div>
-		{#if (lowStockItems.length > 0 || outOfStockItems.length > 0)}
-			<button class="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-				{#if outOfStockItems.length > 0}<span class="w-[20px] h-[20px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{outOfStockItems.length}</span>{/if}
-				{#if lowStockItems.length > 0}<span class="w-[20px] h-[20px] rounded-full bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center">{lowStockItems.length}</span>{/if}
-			</button>
-		{/if}
 	</header>
 
 	<!-- Toolbar Row -->
@@ -401,6 +393,15 @@
 			</select>
 			<svg class="absolute right-2.5 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
 		</div>
+		<!-- Mobile: Stock button next to category -->
+		{#if (lowStockItems.length > 0 || outOfStockItems.length > 0)}
+			<button class="md:hidden h-9 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold shrink-0 {outOfStockItems.length > 0 ? 'bg-md-error-container text-md-error' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+				Stok
+				{#if outOfStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-md-error text-md-on-error text-[9px] font-bold flex items-center justify-center">{outOfStockItems.length}</span>{/if}
+				{#if lowStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">{lowStockItems.length}</span>{/if}
+			</button>
+		{/if}
 		<!-- Desktop: inline search -->
 		<div class="hidden md:block flex-1 relative max-w-md">
 			<svg class="absolute left-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
