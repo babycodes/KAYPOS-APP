@@ -13,7 +13,8 @@ heldCarts.get("/", (c) => {
 
 // POST /api/held-carts — create a held cart
 heldCarts.post("/", async (c) => {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "") || "";
+  // Support token from query param (sendBeacon on page unload) or Authorization header
+  const token = c.req.query("token") || c.req.header("Authorization")?.replace("Bearer ", "") || "";
   const session = getSession(token);
   const { label, cart_data, total } = await c.req.json<{ label: string; cart_data: any[]; total: number }>();
   if (!label || !cart_data || cart_data.length === 0) return c.json({ error: "Data tidak lengkap" }, 400);

@@ -155,6 +155,8 @@
 		window.addEventListener('click', handleActivity);
 		window.addEventListener('keydown', handleActivity);
 		window.addEventListener('touchstart', handleActivity);
+		window.addEventListener('beforeunload', autoSaveCart);
+		document.addEventListener('visibilitychange', handleVisibility);
 		return () => { stopPolling(); };
 	});
 
@@ -163,10 +165,41 @@
 			window.removeEventListener('click', handleActivity);
 			window.removeEventListener('keydown', handleActivity);
 			window.removeEventListener('touchstart', handleActivity);
+			window.removeEventListener('beforeunload', autoSaveCart);
+			document.removeEventListener('visibilitychange', handleVisibility);
 		}
 	});
 
 	function handleActivity() { authStore.resetTimer(); }
+
+	// Auto-save cart to park when app is closed/hidden
+	function handleVisibility() {
+		if (document.visibilityState === 'hidden') autoSaveCart();
+	}
+
+	function autoSaveCart() {
+		if (cart.length === 0) return;
+		// Save to localStorage as emergency backup
+		try {
+			const total = cart.reduce((s: number, c: any) => s + c.quantity * c.unit_price, 0);
+			const nextNum = heldCarts.length + 1;
+			const label = `Antrian ${nextNum}`;
+			// Use sendBeacon for reliability on page unload
+			const token = authStore.token || '';
+			const payload = JSON.stringify({ label, cart_data: cart, total });
+			const blob = new Blob([payload], { type: 'application/json' });
+			// Try sendBeacon first (works on unload)
+			const apiBase = '/api';
+			const headers = { type: 'application/json' };
+			const sent = navigator.sendBeacon(
+				`${apiBase}/held-carts?token=${token}`,
+				new Blob([payload], headers)
+			);
+			if (sent) {
+				cart = [];
+			}
+		} catch {}
+	}
 
 	async function loadData() {
 		try {
@@ -262,12 +295,6 @@
 			activeCartHeldId = null;
 			cartOpen = false;
 			loadDashboard();
-			// Auto-print to thermal printer immediately
-			try {
-				await api.post('/print/receipt', { transaction_id: result.transaction.id });
-			} catch {
-				// Thermal print failed silently — user can still press Cetak Nota manually
-			}
 		} catch (e: any) { showToast('❌ ' + e.message); }
 	}
 
@@ -289,8 +316,6 @@
 			const res = await api.get(`/transactions/${txId}`);
 			receiptData = res;
 			showHistory = false;
-			// Auto-print to thermal
-			try { await api.post('/print/receipt', { transaction_id: txId }); } catch {}
 		} catch (e: any) { showToast('❌ Gagal memuat data transaksi: ' + e.message); }
 	}
 	function fmtPrice(n: number) { return n < 1 && n > 0 ? `Rp ${n.toFixed(2)}` : `Rp ${Math.round(n).toLocaleString('id-ID')}`; }
@@ -688,7 +713,7 @@
 
 <!-- Checkout Confirm -->
 {#if pendingPayment !== null}
-	<ConfirmDialog title="Konfirmasi Transaksi" message="Pastikan semua item dan jumlah pembayaran sudah benar. Transaksi akan langsung tersimpan dan tidak bisa diubah." confirmText="Ya, Simpan & Cetak" onConfirm={confirmCheckout} onCancel={cancelCheckout} />
+	<ConfirmDialog title="Konfirmasi Transaksi" message="Pastikan semua item dan jumlah pembayaran sudah benar. Transaksi akan langsung tersimpan dan tidak bisa diubah." confirmText="Ya, Proses Pembelian" onConfirm={confirmCheckout} onCancel={cancelCheckout} />
 {/if}
 
 <!-- Low Stock Alert Modal -->
