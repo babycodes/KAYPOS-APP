@@ -26,6 +26,13 @@ transactions.post("/", async (c) => {
       .get(item.product_id, item.unit_name) as any;
     if (!unit) return c.json({ error: `Unit '${item.unit_name}' tidak tersedia untuk ${product.name}` }, 400);
 
+    // Check stock availability
+    const inv = db.prepare("SELECT stock_quantity FROM inventory WHERE product_id = ?").get(item.product_id) as any;
+    const availableStock = inv?.stock_quantity ?? 0;
+    if (item.quantity > availableStock) {
+      return c.json({ error: `Stok ${product.name} tidak cukup. Tersisa: ${Math.round(availableStock)}, diminta: ${item.quantity}` }, 400);
+    }
+
     // V3: price is for qty_per_unit amount
     // subtotal = (quantity / qty_per_unit) * price
     const pricePerOne = unit.price / unit.qty_per_unit;

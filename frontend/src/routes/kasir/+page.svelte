@@ -188,16 +188,38 @@
 	}
 
 	function addToCart(product: any, unitName: string, quantity: number) {
+		const stock = product.stock_quantity ?? Infinity;
+		const totalInCart = cart.filter((i: any) => i.product.id === product.id).reduce((s: number, i: any) => s + i.quantity, 0);
+		if (totalInCart + quantity > stock) {
+			const remaining = Math.max(0, stock - totalInCart);
+			if (remaining <= 0) { alert(`Stok ${product.name} habis!`); return; }
+			quantity = remaining;
+		}
 		const idx = cart.findIndex((i: any) => i.product.id === product.id && i.selected_unit === unitName);
 		if (idx >= 0) { cart[idx].quantity += quantity; cart = [...cart]; }
 		else { cart = [...cart, { product, selected_unit: unitName, quantity, unit_price: calcUnitPrice(product, unitName) }]; }
 		unitSelectorProduct = null;
 	}
 
-	function incrementItem(i: number) { cart[i].quantity += 1; cart = [...cart]; }
+	function getStockForItem(i: number) { return cart[i]?.product?.stock_quantity ?? Infinity; }
+	function getTotalCartQty(productId: number) { return cart.filter((c: any) => c.product.id === productId).reduce((s: number, c: any) => s + c.quantity, 0); }
+
+	function incrementItem(i: number) {
+		const stock = getStockForItem(i);
+		const totalInCart = getTotalCartQty(cart[i].product.id);
+		if (totalInCart >= stock) { alert(`Stok ${cart[i].product.name} sudah maksimal (${Math.round(stock)})`); return; }
+		cart[i].quantity += 1; cart = [...cart];
+	}
 	function decrementItem(i: number) { if (cart[i].quantity > 1) { cart[i].quantity -= 1; cart = [...cart]; } }
 	function removeItem(i: number) { cart = cart.filter((_: any, idx: number) => idx !== i); }
-	function setItemQty(i: number, qty: number) { if (qty > 0) { cart[i].quantity = qty; cart = [...cart]; } }
+	function setItemQty(i: number, qty: number) {
+		if (qty <= 0) return;
+		const stock = getStockForItem(i);
+		const otherQty = cart.filter((c: any, idx: number) => idx !== i && c.product.id === cart[i].product.id).reduce((s: number, c: any) => s + c.quantity, 0);
+		const maxQty = Math.max(0, stock - otherQty);
+		if (qty > maxQty) { qty = maxQty; alert(`Stok maksimal: ${Math.round(maxQty)}`); }
+		cart[i].quantity = qty; cart = [...cart];
+	}
 
 	async function handleCheckout(paidAmount: number) {
 		// Store pending payment, show confirmation
