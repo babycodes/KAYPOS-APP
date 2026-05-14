@@ -1,22 +1,39 @@
 {
   "name": "KAYPOS - Point of Sale",
   "short_name": "KAYPOS",
-  "description": "Sistem POS Offline untuk STB — Cepat, Modern, Tanpa Internet",
+  "description": "Sistem POS Modern — Cepat, Offline-Ready, Multi-Device",
   "start_url": "/kasir",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "landscape",
+  "orientation": "any",
   "theme_color": "#1a1a2e",
   "background_color": "#0f0f1a",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Kasir",
+      "url": "/kasir",
+      "description": "Buka halaman kasir"
+    },
+    {
+      "name": "Admin",
+      "url": "/admin",
+      "description": "Buka admin panel"
     }
   ]
 }
