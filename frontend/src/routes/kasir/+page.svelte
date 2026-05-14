@@ -262,7 +262,13 @@
 			activeCartHeldId = null;
 			cartOpen = false;
 			loadDashboard();
-		} catch (e: any) { alert('Error: ' + e.message); }
+			// Auto-print to thermal printer immediately
+			try {
+				await api.post('/print/receipt', { transaction_id: result.transaction.id });
+			} catch {
+				// Thermal print failed silently — user can still press Cetak Nota manually
+			}
+		} catch (e: any) { showToast('❌ ' + e.message); }
 	}
 
 	function cancelCheckout() { pendingPayment = null; showPayment = true; }
@@ -283,7 +289,9 @@
 			const res = await api.get(`/transactions/${txId}`);
 			receiptData = res;
 			showHistory = false;
-		} catch (e: any) { alert('Gagal memuat data transaksi: ' + e.message); }
+			// Auto-print to thermal
+			try { await api.post('/print/receipt', { transaction_id: txId }); } catch {}
+		} catch (e: any) { showToast('❌ Gagal memuat data transaksi: ' + e.message); }
 	}
 	function fmtPrice(n: number) { return n < 1 && n > 0 ? `Rp ${n.toFixed(2)}` : `Rp ${Math.round(n).toLocaleString('id-ID')}`; }
 
