@@ -275,13 +275,11 @@
 				</div>
 				<div>
 					<label class="text-xs font-semibold text-md-on-surface-variant block mb-1">Barcode</label>
-					<div class="flex gap-2">
-						<input type="text" bind:value={form.barcode} placeholder="Manual atau generate" class="flex-1 h-12 px-4 rounded-xl bg-md-surface-container border border-md-outline-variant text-md-on-surface focus:border-md-primary focus:outline-none font-mono" />
-						<button use:ripple type="button" class="h-12 px-3 rounded-xl bg-md-secondary-container text-md-on-secondary-container text-xs font-semibold flex items-center gap-1 shrink-0" onclick={generateBarcode} title="Generate barcode otomatis">
-							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>
-							Generate
-						</button>
-					</div>
+					<input type="text" bind:value={form.barcode} placeholder="Manual atau generate" class="w-full h-12 px-4 rounded-xl bg-md-surface-container border border-md-outline-variant text-md-on-surface focus:border-md-primary focus:outline-none font-mono" />
+					<button use:ripple type="button" class="mt-1.5 w-full h-9 rounded-lg bg-md-secondary-container text-md-on-secondary-container text-xs font-semibold flex items-center justify-center gap-1.5" onclick={generateBarcode}>
+						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>
+						Generate Barcode
+					</button>
 				</div>
 				{#if !editId}
 					<div>

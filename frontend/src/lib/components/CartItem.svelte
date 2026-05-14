@@ -6,19 +6,41 @@
 		item,
 		onIncrement,
 		onDecrement,
-		onRemove
+		onRemove,
+		onSetQuantity
 	}: {
 		item: any;
 		onIncrement: () => void;
 		onDecrement: () => void;
 		onRemove: () => void;
+		onSetQuantity?: (qty: number) => void;
 	} = $props();
 
 	let subtotal = $derived(item.unit_price * item.quantity);
+	let editing = $state(false);
+	let editVal = $state('');
 
 	function formatPrice(price: number): string {
 		if (price < 1) return `Rp ${price.toFixed(2)}`;
 		return `Rp ${price.toLocaleString('id-ID')}`;
+	}
+
+	function startEdit() {
+		editVal = String(item.quantity);
+		editing = true;
+		// Focus on next tick
+		setTimeout(() => {
+			const el = document.getElementById(`qty-edit-${item.product.id}-${item.selected_unit}`);
+			if (el) { (el as HTMLInputElement).select(); el.focus(); }
+		}, 50);
+	}
+
+	function commitEdit() {
+		const val = parseFloat(editVal);
+		if (!isNaN(val) && val > 0 && onSetQuantity) {
+			onSetQuantity(val);
+		}
+		editing = false;
 	}
 </script>
 
@@ -67,7 +89,20 @@
 				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
 			{/if}
 		</button>
-		<span class="font-bold text-xs text-md-on-surface w-6 text-center tabular-nums">{item.quantity}</span>
+		{#if editing}
+			<input
+				id="qty-edit-{item.product.id}-{item.selected_unit}"
+				type="number"
+				bind:value={editVal}
+				class="w-10 h-7 text-xs font-bold text-center bg-md-surface-container rounded border border-md-primary tabular-nums text-md-on-surface [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+				min="0.1"
+				step="any"
+				onblur={commitEdit}
+				onkeydown={(e) => { if (e.key === 'Enter') commitEdit(); }}
+			/>
+		{:else}
+			<button class="font-bold text-xs text-md-on-surface w-8 text-center tabular-nums hover:bg-md-surface-container rounded h-7 flex items-center justify-center" onclick={startEdit} title="Klik untuk edit qty">{item.quantity}</button>
+		{/if}
 		<button
 			use:ripple
 			class="w-8 h-8 rounded-md flex items-center justify-center bg-md-primary text-md-on-primary hover:opacity-90 transition-colors"

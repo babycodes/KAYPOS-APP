@@ -191,6 +191,7 @@
 	function incrementItem(i: number) { cart[i].quantity += 1; cart = [...cart]; }
 	function decrementItem(i: number) { if (cart[i].quantity > 1) { cart[i].quantity -= 1; cart = [...cart]; } }
 	function removeItem(i: number) { cart = cart.filter((_: any, idx: number) => idx !== i); }
+	function setItemQty(i: number, qty: number) { if (qty > 0) { cart[i].quantity = qty; cart = [...cart]; } }
 
 	async function handleCheckout(paidAmount: number) {
 		try {
@@ -365,7 +366,7 @@
 			</div>
 			<div class="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar">
 				{#if cart.length === 0}<div class="flex flex-col items-center justify-center h-full text-md-on-surface-variant/50"><p class="font-medium text-sm">Keranjang Kosong</p></div>
-				{:else}{#each cart as item, i (item.product.id + '-' + item.selected_unit)}<CartItem {item} onIncrement={() => incrementItem(i)} onDecrement={() => decrementItem(i)} onRemove={() => removeItem(i)} />{/each}{/if}
+				{:else}{#each cart as item, i (item.product.id + '-' + item.selected_unit)}<CartItem {item} onIncrement={() => incrementItem(i)} onDecrement={() => decrementItem(i)} onRemove={() => removeItem(i)} onSetQuantity={(qty) => setItemQty(i, qty)} />{/each}{/if}
 			</div>
 			<div class="p-4 border-t border-md-outline-variant/50">
 				<div class="flex items-center justify-between mb-3"><span class="text-sm font-semibold text-md-on-surface-variant">Total</span><span class="text-2xl font-extrabold text-md-primary tabular-nums">{fmtPrice(cartTotal)}</span></div>
@@ -435,7 +436,7 @@
 			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar">
-			{#each cart as item, i (item.product.id + '-' + item.selected_unit)}<CartItem {item} onIncrement={() => incrementItem(i)} onDecrement={() => decrementItem(i)} onRemove={() => removeItem(i)} />{/each}
+			{#each cart as item, i (item.product.id + '-' + item.selected_unit)}<CartItem {item} onIncrement={() => incrementItem(i)} onDecrement={() => decrementItem(i)} onRemove={() => removeItem(i)} onSetQuantity={(qty) => setItemQty(i, qty)} />{/each}
 		</div>
 		<div class="p-4 border-t border-md-outline-variant/50">
 			<div class="flex items-center justify-between mb-3"><span class="text-sm font-semibold text-md-on-surface-variant">Total</span><span class="text-xl font-extrabold text-md-primary tabular-nums">{fmtPrice(cartTotal)}</span></div>

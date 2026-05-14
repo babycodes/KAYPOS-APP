@@ -5,8 +5,9 @@
 
 	let inventory = $state<any[]>([]);
 	let filter = $state('all');
-	let adjustId = $state<number | null>(null);
-	let adjustVal = $state(0);
+	let editId = $state<number | null>(null);
+	let editStock = $state(0);
+	let editMinAlert = $state(0);
 	let searchQuery = $state('');
 
 	onMount(async () => { await load(); });
@@ -20,10 +21,15 @@
 
 	let lowCount = $derived(inventory.filter((i: any) => i.min_stock_alert > 0 && i.stock_quantity <= i.min_stock_alert).length);
 
-	async function doAdjust(productId: number) {
-		if (adjustVal === 0) return;
-		await api.put(`/inventory/${productId}`, { adjustment: adjustVal });
-		adjustId = null; adjustVal = 0;
+	function openEdit(item: any) {
+		editId = item.product_id;
+		editStock = Math.round(item.stock_quantity);
+		editMinAlert = item.min_stock_alert || 0;
+	}
+
+	async function saveEdit(productId: number) {
+		await api.put(`/inventory/${productId}`, { stock_quantity: editStock, min_stock_alert: editMinAlert });
+		editId = null;
 		await load();
 	}
 </script>
@@ -50,23 +56,35 @@
 				<div class="flex items-center justify-between mb-2">
 					<div class="min-w-0 flex-1">
 						<div class="font-bold text-sm truncate">{item.name}</div>
-						<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'} · {item.base_unit}</div>
+						<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'} · {item.base_unit || '-'}</div>
 					</div>
-					<div class="text-right ml-2">
-						<div class="text-lg font-extrabold tabular-nums {isLow ? 'text-md-error' : 'text-md-on-surface'}">{Math.round(item.stock_quantity)}</div>
-						{#if item.min_stock_alert > 0}
-							<div class="text-[9px] text-md-on-surface-variant">min: {item.min_stock_alert}</div>
-						{/if}
+					<div class="flex items-center gap-2">
+						<div class="text-right">
+							<div class="text-lg font-extrabold tabular-nums {isLow ? 'text-md-error' : 'text-md-on-surface'}">{Math.round(item.stock_quantity)}</div>
+							{#if item.min_stock_alert > 0}
+								<div class="text-[9px] text-md-on-surface-variant">min: {item.min_stock_alert}</div>
+							{/if}
+						</div>
+						<button use:ripple class="w-8 h-8 rounded-lg bg-md-primary-container/50 text-md-primary flex items-center justify-center shrink-0" onclick={() => openEdit(item)} title="Edit stok">
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+						</button>
 					</div>
 				</div>
-				{#if adjustId === item.product_id}
-					<div class="flex items-center gap-2">
-						<input type="number" bind:value={adjustVal} placeholder="+100 / -50" class="flex-1 h-9 px-3 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-center" />
-						<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-bold bg-md-primary text-md-on-primary" onclick={() => doAdjust(item.product_id)}>OK</button>
-						<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-md-surface-container" onclick={() => adjustId = null}>✕</button>
+				{#if editId === item.product_id}
+					<div class="flex gap-2 mt-2 pt-2 border-t border-md-outline-variant/30">
+						<div class="flex-1">
+							<label class="text-[9px] font-semibold text-md-on-surface-variant uppercase">Stok</label>
+							<input type="number" bind:value={editStock} class="w-full h-9 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-center tabular-nums" />
+						</div>
+						<div class="flex-1">
+							<label class="text-[9px] font-semibold text-md-on-surface-variant uppercase">Min. Alert</label>
+							<input type="number" bind:value={editMinAlert} class="w-full h-9 px-2 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-center tabular-nums" />
+						</div>
+						<div class="flex flex-col gap-1 pt-3">
+							<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-bold bg-md-primary text-md-on-primary" onclick={() => saveEdit(item.product_id)}>OK</button>
+							<button use:ripple class="px-3 py-1 rounded-lg text-[10px] font-semibold bg-md-surface-container" onclick={() => editId = null}>✕</button>
+						</div>
 					</div>
-				{:else}
-					<button use:ripple class="w-full py-1.5 rounded-lg text-[11px] font-semibold bg-md-primary-container/50 text-md-primary" onclick={() => { adjustId = item.product_id; adjustVal = 0; }}>± Adjustment</button>
 				{/if}
 			</div>
 		{/each}
@@ -93,18 +111,31 @@
 						<tr class="border-t border-md-outline-variant/50 {isLow ? 'bg-md-error-container/10' : 'hover:bg-md-surface-container/30'}">
 							<td class="px-4 py-3 font-medium">{item.name}</td>
 							<td class="px-4 py-3 text-md-on-surface-variant">{item.category_name || '-'}</td>
-							<td class="px-4 py-3 font-bold tabular-nums {isLow ? 'text-md-error' : 'text-md-on-surface'}">{Math.round(item.stock_quantity)}</td>
-							<td class="px-4 py-3">{item.base_unit}</td>
-							<td class="px-4 py-3 text-md-on-surface-variant tabular-nums">{item.min_stock_alert || '-'}</td>
+							<td class="px-4 py-3">
+								{#if editId === item.product_id}
+									<input type="number" bind:value={editStock} class="w-20 h-8 px-2 rounded-lg bg-md-surface-container border border-md-primary text-sm text-center tabular-nums font-bold" />
+								{:else}
+									<span class="font-bold tabular-nums {isLow ? 'text-md-error' : 'text-md-on-surface'}">{Math.round(item.stock_quantity)}</span>
+								{/if}
+							</td>
+							<td class="px-4 py-3">{item.base_unit || '-'}</td>
+							<td class="px-4 py-3">
+								{#if editId === item.product_id}
+									<input type="number" bind:value={editMinAlert} class="w-20 h-8 px-2 rounded-lg bg-md-surface-container border border-md-primary text-sm text-center tabular-nums" />
+								{:else}
+									<span class="text-md-on-surface-variant tabular-nums">{item.min_stock_alert || '-'}</span>
+								{/if}
+							</td>
 							<td class="px-4 py-3 text-right">
-								{#if adjustId === item.product_id}
-									<div class="flex items-center gap-2 justify-end">
-										<input type="number" bind:value={adjustVal} placeholder="+100 / -50" class="w-24 h-9 px-3 rounded-lg bg-md-surface-container border border-md-outline-variant text-sm text-center" />
-										<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-bold bg-md-primary text-md-on-primary" onclick={() => doAdjust(item.product_id)}>OK</button>
-										<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-md-surface-container text-md-on-surface" onclick={() => adjustId = null}>✕</button>
+								{#if editId === item.product_id}
+									<div class="flex justify-end gap-1">
+										<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-bold bg-md-primary text-md-on-primary" onclick={() => saveEdit(item.product_id)}>Simpan</button>
+										<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-md-surface-container" onclick={() => editId = null}>Batal</button>
 									</div>
 								{:else}
-									<button use:ripple class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-md-primary-container/50 text-md-primary" onclick={() => { adjustId = item.product_id; adjustVal = 0; }}>Adjustment</button>
+									<button use:ripple class="w-8 h-8 rounded-lg bg-md-primary-container/50 text-md-primary flex items-center justify-center" onclick={() => openEdit(item)} title="Edit stok">
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+									</button>
 								{/if}
 							</td>
 						</tr>
