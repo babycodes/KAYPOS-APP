@@ -382,6 +382,14 @@
 	<header class="shrink-0 bg-md-primary px-4 flex items-center gap-3 safe-top min-h-[48px]">
 		<div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center"><span class="text-white font-black text-xs">K</span></div>
 		<span class="font-extrabold text-white text-lg tracking-tight">KAYPOS</span>
+		<div class="flex-1"></div>
+		{#if (lowStockItems.length > 0 || outOfStockItems.length > 0)}
+			<button class="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+				{#if outOfStockItems.length > 0}<span class="w-[20px] h-[20px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{outOfStockItems.length}</span>{/if}
+				{#if lowStockItems.length > 0}<span class="w-[20px] h-[20px] rounded-full bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center">{lowStockItems.length}</span>{/if}
+			</button>
+		{/if}
 	</header>
 
 	<!-- Toolbar Row -->
@@ -554,16 +562,7 @@
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
 			<span class="text-[9px] font-semibold">Profil</span>
 		</button>
-		{#if lowStockItems.length > 0 || outOfStockItems.length > 0}
-			<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl relative {outOfStockItems.length > 0 ? 'text-md-error' : 'text-amber-600'}" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
-				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-				<span class="text-[9px] font-bold">Stok</span>
-				<span class="absolute -top-0.5 -right-0.5 flex gap-px">
-					{#if outOfStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-md-error text-md-on-error text-[9px] font-bold flex items-center justify-center leading-none">{outOfStockItems.length}</span>{/if}
-					{#if lowStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">{lowStockItems.length}</span>{/if}
-				</span>
-			</button>
-		{/if}
+
 		{#if authStore.isAdmin}
 			<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl text-md-tertiary transition-colors" onclick={() => goto('/admin')}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
