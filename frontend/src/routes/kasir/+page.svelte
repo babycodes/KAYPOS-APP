@@ -38,6 +38,14 @@
 	let lowStockItems = $state<any[]>([]);
 	let showLowStock = $state(false);
 	let pendingPayment = $state<number | null>(null);
+	let toastMsg = $state('');
+	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showToast(msg: string) {
+		toastMsg = msg;
+		if (toastTimer) clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => { toastMsg = ''; }, 3000);
+	}
 
 	// ===== HOLD / PARK SYSTEM (API-backed, shared across devices) =====
 	interface HeldCart { id: number; label: string; cart_data: any[]; total: number; created_by_name: string; created_at: string; }
@@ -192,8 +200,9 @@
 		const totalInCart = cart.filter((i: any) => i.product.id === product.id).reduce((s: number, i: any) => s + i.quantity, 0);
 		if (totalInCart + quantity > stock) {
 			const remaining = Math.max(0, stock - totalInCart);
-			if (remaining <= 0) { alert(`Stok ${product.name} habis!`); return; }
+			if (remaining <= 0) { showToast(`⚠️ Stok ${product.name} habis!`); return; }
 			quantity = remaining;
+			showToast(`⚠️ Stok terbatas, hanya ${remaining} tersisa`);
 		}
 		const idx = cart.findIndex((i: any) => i.product.id === product.id && i.selected_unit === unitName);
 		if (idx >= 0) { cart[idx].quantity += quantity; cart = [...cart]; }
@@ -207,7 +216,7 @@
 	function incrementItem(i: number) {
 		const stock = getStockForItem(i);
 		const totalInCart = getTotalCartQty(cart[i].product.id);
-		if (totalInCart >= stock) { alert(`Stok ${cart[i].product.name} sudah maksimal (${Math.round(stock)})`); return; }
+		if (totalInCart >= stock) { showToast(`⚠️ Stok ${cart[i].product.name} sudah maksimal (${Math.round(stock)})`); return; }
 		cart[i].quantity += 1; cart = [...cart];
 	}
 	function decrementItem(i: number) { if (cart[i].quantity > 1) { cart[i].quantity -= 1; cart = [...cart]; } }
@@ -217,12 +226,12 @@
 		const stock = getStockForItem(i);
 		const otherQty = cart.filter((c: any, idx: number) => idx !== i && c.product.id === cart[i].product.id).reduce((s: number, c: any) => s + c.quantity, 0);
 		const maxQty = Math.max(0, stock - otherQty);
-		if (qty > maxQty) { qty = maxQty; alert(`Stok maksimal: ${Math.round(maxQty)}`); }
+		if (qty > maxQty) { qty = maxQty; showToast(`⚠️ Stok maksimal: ${Math.round(maxQty)}`); }
 		cart[i].quantity = qty; cart = [...cart];
 	}
 
 	async function handleCheckout(paidAmount: number) {
-		// Store pending payment, show confirmation
+		// Store pending payment, show confirmation — keep cart open
 		pendingPayment = paidAmount;
 		showPayment = false;
 	}
@@ -389,7 +398,7 @@
 
 	<!-- Mobile: Floating Cart FAB (FIXED) -->
 	{#if cart.length > 0}
-		<button class="md:hidden fixed bottom-[80px] right-4 z-19 w-14 h-14 rounded-2xl bg-md-primary text-md-on-primary flex items-center justify-center elevation-3 active:scale-95 transition-transform" onclick={() => cartOpen = true}>
+		<button class="md:hidden fixed right-4 z-19 w-14 h-14 rounded-2xl bg-md-primary text-md-on-primary flex items-center justify-center elevation-3 active:scale-95 transition-transform cart-fab" onclick={() => cartOpen = true}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
 			<span class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-md-error text-md-on-error text-[10px] font-bold flex items-center justify-center">{cart.length}</span>
 			<span class="absolute -bottom-5 right-0 text-[9px] font-bold text-md-primary bg-md-surface/90 px-1.5 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm">{fmtPrice(cartTotal)}</span>
@@ -500,7 +509,7 @@
 					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><path d="M12 7v5l3 3"/></svg> Tahan
 				</button>
 			</div>
-			<button use:ripple disabled={cart.length === 0} class="w-full h-14 rounded-2xl bg-md-primary text-md-on-primary font-bold text-base elevation-1 disabled:opacity-30 active:scale-[0.98] transition-all" onclick={() => { cartOpen = false; showPayment = true; }}>💳 BAYAR SEKARANG</button>
+			<button use:ripple disabled={cart.length === 0} class="w-full h-14 rounded-2xl bg-md-primary text-md-on-primary font-bold text-base elevation-1 disabled:opacity-30 active:scale-[0.98] transition-all" onclick={() => showPayment = true}>💳 BAYAR SEKARANG</button>
 		</div>
 	</div>
 {/if}
@@ -681,6 +690,13 @@
 	</div>
 {/if}
 
+<!-- Toast Notification -->
+{#if toastMsg}
+	<div class="fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl bg-md-inverse-surface text-md-inverse-on-surface text-sm font-semibold elevation-3 max-w-[90vw] text-center animate-toast">
+		{toastMsg}
+	</div>
+{/if}
+
 <style>
 	.kasir-shell { height: 100dvh; height: 100vh; }
 	@supports (height: 100dvh) { .kasir-shell { height: 100dvh; } }
@@ -692,4 +708,9 @@
 		left: 12px;
 		right: 12px;
 	}
+	.cart-fab {
+		bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+	}
+	@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+	.animate-toast { animation: toastIn 0.25s ease-out; }
 </style>
