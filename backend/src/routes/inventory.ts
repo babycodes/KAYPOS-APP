@@ -7,8 +7,10 @@ const inventory = new Hono();
 // GET /api/inventory — all stock with product info
 inventory.get("/", (c) => {
   const rows = db.prepare(`
-    SELECT i.*, p.name, p.base_unit, p.base_price, p.is_active,
-           c.name as category_name
+    SELECT i.product_id, i.stock_quantity, i.min_stock_alert, i.updated_at,
+           p.name, p.is_active,
+           c.name as category_name,
+           (SELECT pu.unit_name FROM product_units pu WHERE pu.product_id = p.id ORDER BY pu.qty_per_unit ASC LIMIT 1) as base_unit
     FROM inventory i
     JOIN products p ON i.product_id = p.id
     LEFT JOIN categories c ON p.category_id = c.id
@@ -21,7 +23,9 @@ inventory.get("/", (c) => {
 // GET /api/inventory/low-stock
 inventory.get("/low-stock", (c) => {
   const rows = db.prepare(`
-    SELECT i.*, p.name, p.base_unit, c.name as category_name
+    SELECT i.product_id, i.stock_quantity, i.min_stock_alert,
+           p.name, c.name as category_name,
+           (SELECT pu.unit_name FROM product_units pu WHERE pu.product_id = p.id ORDER BY pu.qty_per_unit ASC LIMIT 1) as base_unit
     FROM inventory i
     JOIN products p ON i.product_id = p.id
     LEFT JOIN categories c ON p.category_id = c.id
@@ -39,11 +43,9 @@ inventory.put("/:product_id", async (c) => {
   }>();
 
   if (adjustment !== undefined) {
-    // Relative adjustment (e.g. +100 or -50)
     db.prepare("UPDATE inventory SET stock_quantity = stock_quantity + ?, updated_at = datetime('now','localtime') WHERE product_id = ?")
       .run(adjustment, productId);
   } else if (stock_quantity !== undefined) {
-    // Absolute set
     db.prepare("UPDATE inventory SET stock_quantity = ?, updated_at = datetime('now','localtime') WHERE product_id = ?")
       .run(stock_quantity, productId);
   }
