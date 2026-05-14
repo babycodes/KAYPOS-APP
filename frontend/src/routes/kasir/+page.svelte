@@ -36,7 +36,9 @@
 	let showHeldCarts = $state(false);
 	let showLogoutConfirm = $state(false);
 	let lowStockItems = $state<any[]>([]);
+	let outOfStockItems = $state<any[]>([]);
 	let showLowStock = $state(false);
+	let stockTab = $state<'low' | 'empty'>('low');
 	let pendingPayment = $state<number | null>(null);
 	let toastMsg = $state('');
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -364,7 +366,11 @@
 	function handleLogout() { showLogoutConfirm = true; }
 
 	async function loadLowStock() {
-		try { lowStockItems = await api.get('/inventory/low-stock'); } catch { lowStockItems = []; }
+		try {
+			const [low, empty] = await Promise.all([api.get('/inventory/low-stock'), api.get('/inventory/out-of-stock')]);
+			lowStockItems = low;
+			outOfStockItems = empty;
+		} catch { lowStockItems = []; outOfStockItems = []; }
 	}
 </script>
 
@@ -400,11 +406,12 @@
 			<button use:ripple class="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-semibold transition-colors {showHistory ? 'bg-md-primary text-md-on-primary' : 'bg-md-surface-container text-md-on-surface-variant hover:bg-md-surface-container-high'}" onclick={() => { showHistory = !showHistory; if (showHistory) loadHistory(); }}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Riwayat
 			</button>
-			{#if lowStockItems.length > 0}
-				<button use:ripple class="h-9 px-3 rounded-xl bg-md-error-container text-md-error flex items-center gap-1.5 text-xs font-bold relative" onclick={() => { showLowStock = !showLowStock; }}>
+			{#if lowStockItems.length > 0 || outOfStockItems.length > 0}
+				<button use:ripple class="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold relative {outOfStockItems.length > 0 ? 'bg-md-error-container text-md-error' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-					Stok Rendah
-					<span class="px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center">{lowStockItems.length}</span>
+					Stok
+					{#if outOfStockItems.length > 0}<span class="px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center">{outOfStockItems.length}</span>{/if}
+					{#if lowStockItems.length > 0}<span class="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold min-w-[18px] text-center">{lowStockItems.length}</span>{/if}
 				</button>
 			{/if}
 			<button use:ripple class="h-9 px-3 rounded-xl bg-md-surface-container text-md-on-surface-variant hover:bg-md-surface-container-high flex items-center gap-1.5 text-xs font-semibold transition-colors" onclick={openProfile}>
@@ -547,11 +554,14 @@
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
 			<span class="text-[9px] font-semibold">Profil</span>
 		</button>
-		{#if lowStockItems.length > 0}
-			<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl text-md-error relative" onclick={() => showLowStock = true}>
+		{#if lowStockItems.length > 0 || outOfStockItems.length > 0}
+			<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl relative {outOfStockItems.length > 0 ? 'text-md-error' : 'text-amber-600'}" onclick={() => { showLowStock = true; stockTab = outOfStockItems.length > 0 ? 'empty' : 'low'; }}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-				<span class="text-[9px] font-bold">Stok!</span>
-				<span class="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-md-error text-md-on-error text-[9px] font-bold flex items-center justify-center leading-none">{lowStockItems.length}</span>
+				<span class="text-[9px] font-bold">Stok</span>
+				<span class="absolute -top-0.5 -right-0.5 flex gap-px">
+					{#if outOfStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-md-error text-md-on-error text-[9px] font-bold flex items-center justify-center leading-none">{outOfStockItems.length}</span>{/if}
+					{#if lowStockItems.length > 0}<span class="w-[18px] h-[18px] rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">{lowStockItems.length}</span>{/if}
+				</span>
 			</button>
 		{/if}
 		{#if authStore.isAdmin}
@@ -759,28 +769,64 @@
 	<ConfirmDialog title="Konfirmasi Transaksi" message="Pastikan semua item dan jumlah pembayaran sudah benar. Transaksi akan langsung tersimpan dan tidak bisa diubah." confirmText="Ya, Proses Pembelian" onConfirm={confirmCheckout} onCancel={cancelCheckout} />
 {/if}
 
-<!-- Low Stock Alert Modal -->
+<!-- Stock Alert Modal (Tabbed) -->
 {#if showLowStock}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showLowStock = false; }}>
-		<div class="w-full max-w-md bg-md-surface-bright rounded-t-2xl md:rounded-2xl p-5 elevation-3 max-h-[80vh] overflow-y-auto no-scrollbar">
-			<div class="flex justify-between items-center mb-3">
-				<h3 class="font-bold text-sm text-md-error flex items-center gap-2">⚠️ Stok Rendah ({lowStockItems.length})</h3>
-				<button class="w-8 h-8 rounded-lg bg-md-surface-container text-md-on-surface-variant flex items-center justify-center" onclick={() => showLowStock = false}>✕</button>
+		<div class="w-full max-w-md bg-md-surface-bright rounded-t-2xl md:rounded-2xl elevation-3 max-h-[80vh] overflow-hidden flex flex-col">
+			<div class="p-4 pb-0">
+				<div class="flex justify-between items-center mb-3">
+					<h3 class="font-bold text-sm text-md-on-surface">📦 Status Stok</h3>
+					<button class="w-8 h-8 rounded-lg bg-md-surface-container text-md-on-surface-variant flex items-center justify-center" onclick={() => showLowStock = false}>✕</button>
+				</div>
+				<!-- Tabs -->
+				<div class="flex gap-2 mb-3">
+					<button class="flex-1 py-2 rounded-xl text-xs font-bold transition-colors {stockTab === 'empty' ? 'bg-md-error text-md-on-error' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => stockTab = 'empty'}>
+						🚫 Habis ({outOfStockItems.length})
+					</button>
+					<button class="flex-1 py-2 rounded-xl text-xs font-bold transition-colors {stockTab === 'low' ? 'bg-amber-500 text-white' : 'bg-md-surface-container text-md-on-surface-variant'}" onclick={() => stockTab = 'low'}>
+						⚠️ Rendah ({lowStockItems.length})
+					</button>
+				</div>
 			</div>
-			<p class="text-xs text-md-on-surface-variant mb-3">Produk berikut stoknya rendah. Laporkan ke owner untuk restock.</p>
-			<div class="space-y-2">
-				{#each lowStockItems as item}
-					<div class="flex items-center justify-between p-2.5 rounded-xl bg-md-error-container/10 border border-md-error/20">
-						<div>
-							<div class="font-semibold text-sm">{item.name}</div>
-							<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'} · Min: {item.min_stock_alert}</div>
+			<div class="px-4 pb-4 overflow-y-auto no-scrollbar">
+				{#if stockTab === 'empty'}
+					{#if outOfStockItems.length === 0}
+						<div class="text-center py-8 text-sm text-md-on-surface-variant">Tidak ada stok habis 👍</div>
+					{:else}
+						<p class="text-xs text-md-on-surface-variant mb-3">Produk berikut stoknya habis total. Perlu restock segera.</p>
+						<div class="space-y-2">
+							{#each outOfStockItems as item}
+								<div class="flex items-center justify-between p-2.5 rounded-xl bg-md-error-container/10 border border-md-error/20">
+									<div>
+										<div class="font-semibold text-sm">{item.name}</div>
+										<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'}</div>
+									</div>
+									<div class="px-2 py-1 rounded-lg bg-md-error/10 text-md-error text-xs font-extrabold">HABIS</div>
+								</div>
+							{/each}
 						</div>
-						<div class="text-right">
-							<div class="text-lg font-extrabold text-md-error tabular-nums">{Math.round(item.stock_quantity)}</div>
+					{/if}
+				{:else}
+					{#if lowStockItems.length === 0}
+						<div class="text-center py-8 text-sm text-md-on-surface-variant">Semua stok aman 👍</div>
+					{:else}
+						<p class="text-xs text-md-on-surface-variant mb-3">Produk berikut stoknya mendekati habis. Laporkan ke owner.</p>
+						<div class="space-y-2">
+							{#each lowStockItems as item}
+								<div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-300/30">
+									<div>
+										<div class="font-semibold text-sm">{item.name}</div>
+										<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'} · Min: {item.min_stock_alert}</div>
+									</div>
+									<div class="text-right">
+										<div class="text-lg font-extrabold text-amber-600 tabular-nums">{Math.round(item.stock_quantity)}</div>
+									</div>
+								</div>
+							{/each}
 						</div>
-					</div>
-				{/each}
+					{/if}
+				{/if}
 			</div>
 		</div>
 	</div>

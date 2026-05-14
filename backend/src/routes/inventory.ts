@@ -20,7 +20,7 @@ inventory.get("/", (c) => {
   return c.json(rows);
 });
 
-// GET /api/inventory/low-stock
+// GET /api/inventory/low-stock (excludes stock=0)
 inventory.get("/low-stock", (c) => {
   const rows = db.prepare(`
     SELECT i.product_id, i.stock_quantity, i.min_stock_alert,
@@ -29,8 +29,23 @@ inventory.get("/low-stock", (c) => {
     FROM inventory i
     JOIN products p ON i.product_id = p.id
     LEFT JOIN categories c ON p.category_id = c.id
-    WHERE p.is_active = 1 AND i.stock_quantity <= i.min_stock_alert AND i.min_stock_alert > 0
+    WHERE p.is_active = 1 AND i.stock_quantity <= i.min_stock_alert AND i.min_stock_alert > 0 AND i.stock_quantity > 0
     ORDER BY i.stock_quantity ASC
+  `).all();
+  return c.json(rows);
+});
+
+// GET /api/inventory/out-of-stock
+inventory.get("/out-of-stock", (c) => {
+  const rows = db.prepare(`
+    SELECT i.product_id, i.stock_quantity, i.min_stock_alert,
+           p.name, c.name as category_name,
+           (SELECT pu.unit_name FROM product_units pu WHERE pu.product_id = p.id ORDER BY pu.qty_per_unit ASC LIMIT 1) as base_unit
+    FROM inventory i
+    JOIN products p ON i.product_id = p.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1 AND i.stock_quantity <= 0
+    ORDER BY p.name ASC
   `).all();
   return c.json(rows);
 });

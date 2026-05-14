@@ -14,6 +14,7 @@
 	let sidebarOpen = $state(false);
 	let isMobile = $state(false);
 	let lowStockCount = $state(0);
+	let outOfStockCount = $state(0);
 	let showLogoutConfirm = $state(false);
 
 	function checkMobile() { isMobile = window.innerWidth < 768; }
@@ -33,8 +34,10 @@
 		checkMobile();
 		sidebarOpen = !isMobile;
 		window.addEventListener('resize', checkMobile);
-		// Load low stock count
-		api.get('/inventory/low-stock').then((ls: any[]) => { lowStockCount = ls.length; }).catch(() => {});
+		// Load stock counts
+		Promise.all([api.get('/inventory/low-stock'), api.get('/inventory/out-of-stock')])
+			.then(([low, empty]: [any[], any[]]) => { lowStockCount = low.length; outOfStockCount = empty.length; })
+			.catch(() => {});
 		return () => window.removeEventListener('resize', checkMobile);
 	});
 
@@ -131,8 +134,11 @@
 						{active ? 'bg-md-primary-container text-md-on-primary-container' : 'text-md-on-surface-variant hover:bg-md-surface-container'}">
 						<span class="shrink-0 flex items-center justify-center w-5 h-5">{@html item.icon}</span>
 						{#if sidebarOpen || isMobile}<span class="truncate flex-1">{item.label}</span>{/if}
-						{#if item.label === 'Inventaris' && lowStockCount > 0}
-							<span class="ml-auto px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center leading-tight">{lowStockCount}</span>
+						{#if item.label === 'Inventaris' && (lowStockCount > 0 || outOfStockCount > 0)}
+							<span class="ml-auto flex gap-1">
+								{#if outOfStockCount > 0}<span class="px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center leading-tight">{outOfStockCount}</span>{/if}
+								{#if lowStockCount > 0}<span class="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold min-w-[18px] text-center leading-tight">{lowStockCount}</span>{/if}
+							</span>
 						{/if}
 					</a>
 				{/each}
