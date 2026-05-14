@@ -4,13 +4,17 @@
 	import { onMount } from 'svelte';
 	import { ripple } from '$lib/actions/ripple';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { api } from '$lib/api';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 
 	let { children } = $props();
 	let accessDenied = $state(false);
 	let checked = $state(false);
-	let sidebarOpen = $state(false); // closed by default on mobile
+	let sidebarOpen = $state(false);
 	let isMobile = $state(false);
+	let lowStockCount = $state(0);
+	let showLogoutConfirm = $state(false);
 
 	function checkMobile() { isMobile = window.innerWidth < 768; }
 
@@ -27,8 +31,10 @@
 		}
 		checked = true;
 		checkMobile();
-		sidebarOpen = !isMobile; // open on desktop, closed on mobile
+		sidebarOpen = !isMobile;
 		window.addEventListener('resize', checkMobile);
+		// Load low stock count
+		api.get('/inventory/low-stock').then((ls: any[]) => { lowStockCount = ls.length; }).catch(() => {});
 		return () => window.removeEventListener('resize', checkMobile);
 	});
 
@@ -124,7 +130,10 @@
 						class="flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm min-h-[44px] transition-all
 						{active ? 'bg-md-primary-container text-md-on-primary-container' : 'text-md-on-surface-variant hover:bg-md-surface-container'}">
 						<span class="shrink-0 flex items-center justify-center w-5 h-5">{@html item.icon}</span>
-						{#if sidebarOpen || isMobile}<span class="truncate">{item.label}</span>{/if}
+						{#if sidebarOpen || isMobile}<span class="truncate flex-1">{item.label}</span>{/if}
+						{#if item.label === 'Inventaris' && lowStockCount > 0}
+							<span class="ml-auto px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center leading-tight">{lowStockCount}</span>
+						{/if}
 					</a>
 				{/each}
 			</nav>
@@ -134,7 +143,7 @@
 					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
 					{#if sidebarOpen || isMobile}<span>Ke Kasir</span>{/if}
 				</a>
-				<button use:ripple class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-md-error hover:bg-md-error-container/30 min-h-[44px]" onclick={() => { authStore.logout(); goto('/login'); }}>
+				<button use:ripple class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-md-error hover:bg-md-error-container/30 min-h-[44px]" onclick={() => showLogoutConfirm = true}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
 					{#if sidebarOpen || isMobile}<span>Logout</span>{/if}
 				</button>
@@ -163,4 +172,8 @@
 			</main>
 		</div>
 	</div>
+
+	{#if showLogoutConfirm}
+		<ConfirmDialog title="Logout" message="Yakin ingin logout dari admin panel?" confirmText="Ya, Logout" onConfirm={() => { authStore.logout(); goto('/login'); }} onCancel={() => showLogoutConfirm = false} />
+	{/if}
 {/if}

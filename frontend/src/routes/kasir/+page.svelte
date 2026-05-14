@@ -12,6 +12,7 @@
 	import LockScreen from '$lib/components/LockScreen.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import InputDialog from '$lib/components/InputDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 
 	// ===== STATE =====
 	let products = $state<any[]>([]);
@@ -33,6 +34,10 @@
 	let todayTxList = $state<any[]>([]);
 	let txHistory = $state<any[]>([]);
 	let showHeldCarts = $state(false);
+	let showLogoutConfirm = $state(false);
+	let lowStockItems = $state<any[]>([]);
+	let showLowStock = $state(false);
+	let pendingPayment = $state<number | null>(null);
 
 	// ===== HOLD / PARK SYSTEM (API-backed, shared across devices) =====
 	interface HeldCart { id: number; label: string; cart_data: any[]; total: number; created_by_name: string; created_at: string; }
@@ -137,6 +142,7 @@
 		loadData();
 		loadDashboard();
 		loadHeldCarts();
+		loadLowStock();
 		startPolling();
 		window.addEventListener('click', handleActivity);
 		window.addEventListener('keydown', handleActivity);
@@ -194,11 +200,18 @@
 	function setItemQty(i: number, qty: number) { if (qty > 0) { cart[i].quantity = qty; cart = [...cart]; } }
 
 	async function handleCheckout(paidAmount: number) {
+		// Store pending payment, show confirmation
+		pendingPayment = paidAmount;
+		showPayment = false;
+	}
+
+	async function confirmCheckout() {
+		if (pendingPayment === null) return;
 		try {
 			const items = cart.map((c: any) => ({ product_id: c.product.id, unit_name: c.selected_unit, quantity: c.quantity }));
-			const result = await api.post('/transactions', { items, paid_amount: paidAmount });
+			const result = await api.post('/transactions', { items, paid_amount: pendingPayment });
 			receiptData = result;
-			showPayment = false;
+			pendingPayment = null;
 			cart = [];
 			activeCartLabel = null;
 			activeCartHeldId = null;
@@ -206,6 +219,8 @@
 			loadDashboard();
 		} catch (e: any) { alert('Error: ' + e.message); }
 	}
+
+	function cancelCheckout() { pendingPayment = null; showPayment = true; }
 
 	function closeReceipt() { receiptData = null; }
 
@@ -263,7 +278,11 @@
 		} catch (e: any) { profileMsg = '❌ ' + e.message; }
 	}
 
-	function handleLogout() { authStore.logout(); goto('/login'); }
+	function handleLogout() { showLogoutConfirm = true; }
+
+	async function loadLowStock() {
+		try { lowStockItems = await api.get('/inventory/low-stock'); } catch { lowStockItems = []; }
+	}
 </script>
 
 <svelte:head><title>KAYPOS — Kasir</title></svelte:head>
@@ -298,6 +317,13 @@
 			<button use:ripple class="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-semibold transition-colors {showHistory ? 'bg-md-primary text-md-on-primary' : 'bg-md-surface-container text-md-on-surface-variant hover:bg-md-surface-container-high'}" onclick={() => { showHistory = !showHistory; if (showHistory) loadHistory(); }}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Riwayat
 			</button>
+			{#if lowStockItems.length > 0}
+				<button use:ripple class="h-9 px-3 rounded-xl bg-md-error-container text-md-error flex items-center gap-1.5 text-xs font-bold relative" onclick={() => { showLowStock = !showLowStock; }}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+					Stok Rendah
+					<span class="px-1.5 py-0.5 rounded-full bg-md-error text-md-on-error text-[10px] font-bold min-w-[18px] text-center">{lowStockItems.length}</span>
+				</button>
+			{/if}
 			<button use:ripple class="h-9 px-3 rounded-xl bg-md-surface-container text-md-on-surface-variant hover:bg-md-surface-container-high flex items-center gap-1.5 text-xs font-semibold transition-colors" onclick={openProfile}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg> {authStore.user?.name}
 			</button>
@@ -400,6 +426,13 @@
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
 			<span class="text-[9px] font-semibold">Profil</span>
 		</button>
+		{#if lowStockItems.length > 0}
+			<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl text-md-error relative" onclick={() => showLowStock = true}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+				<span class="text-[9px] font-bold">Stok!</span>
+				<span class="absolute -top-0.5 -right-0.5 px-1 py-0.5 rounded-full bg-md-error text-md-on-error text-[8px] font-bold min-w-[14px] text-center">{lowStockItems.length}</span>
+			</button>
+		{/if}
 		<button use:ripple class="flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl text-md-on-surface-variant transition-colors" onclick={handleLogout}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
 			<span class="text-[9px] font-semibold">Keluar</span>
@@ -588,6 +621,43 @@
 	message={parkAlert.message}
 	type="alert"
 />
+
+<!-- Logout Confirm -->
+{#if showLogoutConfirm}
+	<ConfirmDialog title="Logout" message="Yakin ingin logout dari kasir?" confirmText="Ya, Logout" onConfirm={() => { authStore.logout(); goto('/login'); }} onCancel={() => showLogoutConfirm = false} />
+{/if}
+
+<!-- Checkout Confirm -->
+{#if pendingPayment !== null}
+	<ConfirmDialog title="Konfirmasi Transaksi" message="Pastikan semua item dan jumlah pembayaran sudah benar. Transaksi akan langsung tersimpan dan tidak bisa diubah." confirmText="Ya, Simpan & Cetak" onConfirm={confirmCheckout} onCancel={cancelCheckout} />
+{/if}
+
+<!-- Low Stock Alert Modal -->
+{#if showLowStock}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showLowStock = false; }}>
+		<div class="w-full max-w-md bg-md-surface-bright rounded-t-2xl md:rounded-2xl p-5 elevation-3 max-h-[80vh] overflow-y-auto no-scrollbar">
+			<div class="flex justify-between items-center mb-3">
+				<h3 class="font-bold text-sm text-md-error flex items-center gap-2">⚠️ Stok Rendah ({lowStockItems.length})</h3>
+				<button class="w-8 h-8 rounded-lg bg-md-surface-container text-md-on-surface-variant flex items-center justify-center" onclick={() => showLowStock = false}>✕</button>
+			</div>
+			<p class="text-xs text-md-on-surface-variant mb-3">Produk berikut stoknya rendah. Laporkan ke owner untuk restock.</p>
+			<div class="space-y-2">
+				{#each lowStockItems as item}
+					<div class="flex items-center justify-between p-2.5 rounded-xl bg-md-error-container/10 border border-md-error/20">
+						<div>
+							<div class="font-semibold text-sm">{item.name}</div>
+							<div class="text-[10px] text-md-on-surface-variant">{item.category_name || '-'} · Min: {item.min_stock_alert}</div>
+						</div>
+						<div class="text-right">
+							<div class="text-lg font-extrabold text-md-error tabular-nums">{Math.round(item.stock_quantity)}</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.kasir-shell { height: 100dvh; height: 100vh; } /* dvh with vh fallback */
