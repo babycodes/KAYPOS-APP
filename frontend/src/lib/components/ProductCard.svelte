@@ -14,6 +14,7 @@
 	let displayUnitName = $derived(baseUnit?.unit_name || 'pcs');
 	let hasMultiUnits = $derived((product.units?.length || 0) > 1);
 	let categoryIcon = $derived(product.category_icon || '📦');
+	let outOfStock = $derived((product.stock_quantity ?? Infinity) <= 0);
 
 	function formatPrice(price: number): string {
 		if (price < 1 && price > 0) return `Rp${price.toFixed(2)}`;
@@ -21,7 +22,10 @@
 	}
 </script>
 
-<button use:ripple class="flex flex-col items-start p-2.5 md:p-4 rounded-xl md:rounded-2xl bg-md-surface-bright border border-md-outline-variant hover:border-md-primary/50 hover:bg-md-primary-container/10 transition-all duration-200 text-left active:scale-[0.97] min-h-[100px] md:min-h-[140px] elevation-1 w-full" onclick={() => onSelect(product)}>
+<button use:ripple
+	class="relative flex flex-col items-start p-2.5 md:p-4 rounded-xl md:rounded-2xl bg-md-surface-bright border border-md-outline-variant hover:border-md-primary/50 hover:bg-md-primary-container/10 transition-all duration-200 text-left active:scale-[0.97] min-h-[100px] md:min-h-[140px] elevation-1 w-full {outOfStock ? 'opacity-60 pointer-events-none grayscale-[30%]' : ''}"
+	disabled={outOfStock}
+	onclick={() => onSelect(product)}>
 	<div class="w-full">
 		<div class="flex items-start justify-between w-full">
 			<span class="text-base md:text-lg">{categoryIcon}</span>
@@ -35,4 +39,13 @@
 		<span class="text-[9px] md:text-[11px] text-md-on-surface-variant font-medium">/{displayUnitName}</span>
 		<div class="font-bold text-md-primary text-xs md:text-sm">{formatPrice(pricePerOne)}</div>
 	</div>
+
+	{#if outOfStock}
+		<div class="absolute inset-0 rounded-xl md:rounded-2xl bg-md-error/15 flex flex-col items-center justify-center gap-1 pointer-events-none">
+			<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-md-error drop-shadow-sm">
+				<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>
+			</svg>
+			<span class="text-[9px] md:text-[10px] font-extrabold text-md-error tracking-wider uppercase">Stok Habis</span>
+		</div>
+	{/if}
 </button>
