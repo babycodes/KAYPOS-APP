@@ -40,6 +40,9 @@
 	let pendingPayment = $state<number | null>(null);
 	let toastMsg = $state('');
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+	let refreshing = $state(false);
+	let pullY = $state(0);
+	let pulling = $state(false);
 
 	function showToast(msg: string) {
 		toastMsg = msg;
@@ -108,6 +111,7 @@
 			activeCartLabel = null;
 			cartOpen = false;
 			await loadHeldCarts();
+			loadData(); // refresh stock
 		} catch (e: any) { showParkAlert('Gagal', e.message); }
 	}
 
@@ -131,7 +135,7 @@
 	}
 
 	async function deleteHeldCart(id: number) {
-		try { await api.delete(`/held-carts/${id}`); await loadHeldCarts(); } catch {}
+		try { await api.delete(`/held-carts/${id}`); await loadHeldCarts(); loadData(); } catch {}
 	}
 
 	let cartTotal = $derived(cart.reduce((sum: number, i: any) => sum + i.unit_price * i.quantity, 0));
@@ -295,6 +299,7 @@
 			activeCartHeldId = null;
 			cartOpen = false;
 			loadDashboard();
+			loadData(); // refresh product stock
 		} catch (e: any) { showToast('❌ ' + e.message); }
 	}
 
@@ -455,7 +460,45 @@
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Products (pb-16 on mobile for fixed bottom nav) -->
-		<div class="flex-1 overflow-y-auto px-2 md:px-4 pt-2 pb-20 md:pb-2 no-scrollbar">
+		<div class="flex-1 overflow-y-auto px-2 md:px-4 pt-2 pb-20 md:pb-2 no-scrollbar"
+			ontouchstart={(e) => {
+				const el = e.currentTarget as HTMLElement;
+				if (el.scrollTop <= 0) {
+					pulling = true;
+					pullY = 0;
+				}
+			}}
+			ontouchmove={(e) => {
+				const el = e.currentTarget as HTMLElement;
+				if (pulling && el.scrollTop <= 0) {
+					const touch = e.touches[0];
+					const dy = touch.clientY - (el.getBoundingClientRect().top);
+					pullY = Math.min(dy * 0.3, 80);
+				}
+			}}
+			ontouchend={async () => {
+				if (pulling && pullY > 50) {
+					refreshing = true;
+					await Promise.all([loadData(), loadHeldCarts(), loadLowStock()]);
+					refreshing = false;
+					showToast('✅ Data diperbarui');
+				}
+				pulling = false;
+				pullY = 0;
+			}}>
+
+			{#if pullY > 10 || refreshing}
+				<div class="flex items-center justify-center py-2 text-xs text-md-on-surface-variant gap-2 transition-opacity" style="opacity: {Math.min(pullY / 50, 1)}">
+					{#if refreshing}
+						<span class="animate-spin">⟳</span> Memuat...
+					{:else if pullY > 50}
+						↓ Lepas untuk refresh
+					{:else}
+						↓ Tarik untuk refresh
+					{/if}
+				</div>
+			{/if}
+
 			<div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
 				{#each filteredProducts as product (product.id)}<ProductCard {product} onSelect={handleProductSelect} heldQty={getHeldQty(product.id)} />{/each}
 			</div>
