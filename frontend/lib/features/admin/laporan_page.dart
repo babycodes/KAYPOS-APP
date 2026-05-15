@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/api.dart';
 import '../../core/helpers.dart';
 
@@ -109,7 +109,7 @@ class _LaporanPageState extends State<LaporanPage> {
     } else {
       url = '$base/reports/export?type=year&year=$yearFilter&token=$token';
     }
-    html.window.open(url, "_blank");
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
   double get totalSales {

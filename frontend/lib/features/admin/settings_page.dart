@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../core/api.dart';
 import '../../core/helpers.dart';
@@ -13,7 +14,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   Map<String, dynamic> settings = {};
   
-  html.File? restoreFile;
+  PlatformFile? restoreFile;
   List<int>? restoreFileBytes;
   bool saving = false;
   String restoreMsg = '';
@@ -96,24 +97,20 @@ class _SettingsPageState extends State<SettingsPage> {
   void _downloadBackup() {
     final token = Api.getToken();
     final url = '${Api.getApiBase()}/backup/download?token=$token';
-    html.window.open(url, "_blank");
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
   
   Future<void> _pickRestoreFile() async {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    uploadInput.accept = '.db';
-    uploadInput.click();
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['db'],
+      withData: true,
+    );
 
-    await uploadInput.onChange.first;
-    if (uploadInput.files != null && uploadInput.files!.isNotEmpty) {
-      final file = uploadInput.files!.first;
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      await reader.onLoad.first;
-      
+    if (result != null && result.files.isNotEmpty) {
       setState(() {
-        restoreFile = file;
-        restoreFileBytes = reader.result as List<int>;
+        restoreFile = result.files.first;
+        restoreFileBytes = restoreFile!.bytes;
         restoreMsg = '';
       });
     }
