@@ -92,7 +92,7 @@ jobs:
           Name=Kaypos
           GenericName=Point of Sale
           Comment=A modern Point of Sale application
-          Exec=/opt/kaypos/kaypos
+          Exec=/opt/kaypos/Kaypos
           Icon=kaypos
           Terminal=false
           Type=Application
@@ -102,8 +102,8 @@ jobs:
           mkdir -p package_root/usr/share/icons/hicolor/512x512/apps
           cp assets/icon-512.png package_root/usr/share/icons/hicolor/512x512/apps/kaypos.png
           
-          fpm -s dir -t deb -n kaypos -v 1.0.0 -C package_root .
-          fpm -s dir -t rpm -n kaypos -v 1.0.0 -C package_root .
+          fpm -s dir -t deb -n kaypos -v 1.0.0 -C package_root opt usr
+          fpm -s dir -t rpm -n kaypos -v 1.0.0 -C package_root opt usr
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
