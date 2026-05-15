@@ -3,12 +3,21 @@ import 'package:provider/provider.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'core/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme_provider.dart';
+import 'core/api.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final themeProvider = ThemeProvider();
-  themeProvider.init();
+  await themeProvider.init();
+  
+  final prefs = await SharedPreferences.getInstance();
+  final savedUrl = prefs.getString('kaypos_server_url');
+  if (savedUrl != null && savedUrl.isNotEmpty) {
+    Api.setServerUrl(savedUrl);
+  }
+
   runApp(
     MultiProvider(
       providers: [

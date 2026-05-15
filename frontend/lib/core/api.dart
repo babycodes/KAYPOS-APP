@@ -5,16 +5,28 @@ import 'package:http/http.dart' as http;
 
 class Api {
   static String _authToken = '';
+  static String? _customServerUrl;
+
+  static void setServerUrl(String url) { _customServerUrl = url; }
+  static String? getServerUrl() => _customServerUrl;
   
   static String getApiBase() {
+    if (_customServerUrl != null && _customServerUrl!.isNotEmpty) {
+      // Pastikan custom URL punya http://
+      if (!_customServerUrl!.startsWith('http')) {
+        return 'http://$_customServerUrl/api';
+      }
+      return '$_customServerUrl/api';
+    }
+
     if (kIsWeb) {
       final host = Uri.base.host;
       if (host.isNotEmpty) {
         return 'http://$host:3000/api';
       }
     }
-    // Default fallback for Android/Desktop (bisa disesuaikan nanti lewat setting/env)
-    return 'http://10.0.2.2:3000/api'; // 10.0.2.2 is localhost for Android Emulator
+    // Default fallback
+    return 'http://10.0.2.2:3000/api';
   }
 
   static void setToken(String token) { _authToken = token; }

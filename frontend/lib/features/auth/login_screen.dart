@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 import '../../core/theme_provider.dart';
+import '../../core/api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +34,27 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  void _showServerSettings() {
+    final ctrl = TextEditingController(text: Api.getServerUrl() ?? '10.0.2.2:3000');
+    showDialog(context: context, builder: (c) => AlertDialog(
+      title: const Text('Pengaturan Server'),
+      content: TextField(
+        controller: ctrl,
+        decoration: const InputDecoration(labelText: 'IP/Domain Server (contoh: 192.168.1.10:3000)'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+        FilledButton(onPressed: () async {
+          final val = ctrl.text.trim();
+          Api.setServerUrl(val);
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString('kaypos_server_url', val);
+          if (mounted) Navigator.pop(c);
+        }, child: const Text('Simpan')),
+      ],
+    ));
   }
 
   @override
@@ -151,6 +174,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: cs.onSurfaceVariant,
               ),
               tooltip: 'Toggle Theme',
+            ),
+          ),
+          Positioned(
+            top: 24,
+            left: 24,
+            child: IconButton(
+              onPressed: _showServerSettings,
+              icon: Icon(Icons.dns, color: cs.onSurfaceVariant),
+              tooltip: 'Pengaturan Server',
             ),
           ),
         ],
