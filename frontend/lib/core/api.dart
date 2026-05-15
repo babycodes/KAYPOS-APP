@@ -7,13 +7,14 @@ class Api {
   static String _authToken = '';
   
   static String getApiBase() {
-    // For Flutter web, use the same host as the page
     if (kIsWeb) {
-      // In web, we always call localhost:3000 for dev
-      return 'http://localhost:3000/api';
+      final host = Uri.base.host;
+      if (host.isNotEmpty) {
+        return 'http://$host:3000/api';
+      }
     }
-    // For mobile/desktop, point to local backend
-    return 'http://localhost:3000/api';
+    // Default fallback for Android/Desktop (bisa disesuaikan nanti lewat setting/env)
+    return 'http://10.0.2.2:3000/api'; // 10.0.2.2 is localhost for Android Emulator
   }
 
   static void setToken(String token) { _authToken = token; }
