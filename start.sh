@@ -32,8 +32,8 @@ echo "📦 [Frontend] Installing dependencies..."
 cd "$SCRIPT_DIR/frontend"
 ~/.local/flutter/bin/flutter pub get
 
-echo "🟢 [Frontend] Starting dev server..."
-~/.local/flutter/bin/flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0 &
+echo "🟢 [Frontend] Starting web server (Release Mode for LAN access)..."
+~/.local/flutter/bin/flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0 --release &
 FRONTEND_PID=$!
 sleep 3
 
