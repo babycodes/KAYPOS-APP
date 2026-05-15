@@ -101,7 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   
   Future<void> _pickRestoreFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['db'],
       withData: true,
