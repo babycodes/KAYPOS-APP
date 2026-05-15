@@ -23,7 +23,7 @@ export async function requireAuth(c: Context, next: Next) {
   if (c.req.path === '/api/products/template/excel') {
     return await next();
   }
-  const token = c.req.header("Authorization")?.replace("Bearer ", "") || "";
+  const token = c.req.header("Authorization")?.replace("Bearer ", "") || c.req.query("token") || "";
   const session = getSession(token);
   if (!session) {
     return c.json({ error: "Unauthorized" }, 401);
