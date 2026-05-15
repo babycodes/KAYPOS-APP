@@ -249,8 +249,7 @@ class _KasirScreenState extends State<KasirScreen> {
           padding: EdgeInsets.only(left: 16, right: 16, top: MediaQuery.of(context).padding.top, bottom: 0),
           constraints: const BoxConstraints(minHeight: 48),
           child: SizedBox(height: 48, child: Row(children: [
-            Container(width: 28, height: 28, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-              child: const Center(child: Text('K', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)))),
+            Image.asset('assets/icon-512.png', width: 28, height: 28),
             const SizedBox(width: 12),
             const Text('KAYPOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.5)),
           ])),

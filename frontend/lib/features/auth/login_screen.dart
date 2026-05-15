@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
+import '../../core/theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,24 +39,28 @@ class _LoginScreenState extends State<LoginScreen> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: cs.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo "K" box
+              // Logo image
               Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color: cs.primary,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2)),
                     BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 4)),
                   ],
                 ),
-                child: Center(child: Text('K', style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w900, fontSize: 36))),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset('assets/icon-512.png', width: 80, height: 80, fit: BoxFit.cover),
+                ),
               ),
               const SizedBox(height: 16),
               Text('KAYPOS', style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w800, fontSize: 24, letterSpacing: -0.5)),
@@ -130,9 +135,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            top: 24,
+            right: 24,
+            child: IconButton(
+              onPressed: () {
+                final currentMode = context.read<ThemeModeNotifier>().value;
+                context.read<ThemeModeNotifier>().value = currentMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+              },
+              icon: Icon(
+                Theme.of(context).brightness == Brightness.light ? Icons.dark_mode : Icons.light_mode,
+                color: cs.onSurfaceVariant,
+              ),
+              tooltip: 'Toggle Theme',
+            ),
+          ),
+        ],
       ),
     );
   }
