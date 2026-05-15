@@ -11,7 +11,7 @@ echo ""
 # Kill existing processes
 echo "🛑 Menghentikan proses lama..."
 pkill -f "bun.*src/index.ts" 2>/dev/null && echo "   Backend dihentikan" || echo "   Backend tidak berjalan"
-pkill -f "vite.*5173" 2>/dev/null && echo "   Frontend dihentikan" || echo "   Frontend tidak berjalan"
+pkill -f "flutter.*web-server" 2>/dev/null && echo "   Frontend dihentikan" || echo "   Frontend tidak berjalan"
 sleep 2
 
 # === Backend ===
@@ -25,7 +25,7 @@ sleep 2
 # === Frontend ===
 echo "🟢 [Frontend] Starting dev server..."
 cd "$SCRIPT_DIR/frontend"
-npm run dev &
+~/.local/flutter/bin/flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0 &
 FRONTEND_PID=$!
 sleep 3
 
@@ -35,7 +35,7 @@ echo "=========================================="
 echo "  ✅ KAYPOS Berhasil Direstart!"
 echo "=========================================="
 echo ""
-echo "  Frontend: http://localhost:5173"
+echo "  Frontend: http://localhost:8080"
 echo "  Backend:  http://localhost:3000"
 echo ""
 echo "  Database: TIDAK direset"

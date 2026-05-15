@@ -44,22 +44,6 @@ backup.post("/restore", async (c) => {
   }
 });
 
-// GET /api/settings
-backup.get("/settings", (c) => {
-  const rows = db.prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
-  const settings: Record<string, string> = {};
-  for (const r of rows) settings[r.key] = r.value;
-  return c.json(settings);
-});
 
-// PUT /api/settings
-backup.put("/settings", async (c) => {
-  const body = await c.req.json<Record<string, string>>();
-  const stmt = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
-  for (const [key, value] of Object.entries(body)) {
-    stmt.run(key, value);
-  }
-  return c.json({ success: true });
-});
 
 export default backup;

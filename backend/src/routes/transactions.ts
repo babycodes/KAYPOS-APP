@@ -44,6 +44,15 @@ transactions.post("/", async (c) => {
       return c.json({ error: `Stok ${product.name} tidak cukup. Tersisa: ${Math.round(availableStock)}, diminta: ${item.quantity}` }, 400);
     }
 
+    // Calculate cost per qty based on purchase_price and purchase_unit
+    let costPerQty = 0;
+    if (product.purchase_price > 0 && product.purchase_unit) {
+      const pu = db.prepare("SELECT qty_per_unit FROM product_units WHERE product_id = ? AND unit_name = ?").get(item.product_id, product.purchase_unit) as any;
+      if (pu && pu.qty_per_unit > 0) {
+         costPerQty = product.purchase_price / pu.qty_per_unit;
+      }
+    }
+
     // V3: price is for qty_per_unit amount
     // subtotal = (quantity / qty_per_unit) * price
     const pricePerOne = unit.price / unit.qty_per_unit;
@@ -52,7 +61,7 @@ transactions.post("/", async (c) => {
     totalAmount += subtotal;
     details.push({
       product_id: product.id, product_name: product.name,
-      sold_price: pricePerOne, quantity: item.quantity,
+      sold_price: pricePerOne, purchase_price: costPerQty, quantity: item.quantity,
       unit_used: item.unit_name, subtotal,
       stock_deduct: item.quantity // deduct by actual quantity in that unit
     });
@@ -65,11 +74,11 @@ transactions.post("/", async (c) => {
     .run(user?.userId || null, user?.name || "Unknown", totalAmount, body.paid_amount, changeAmount, body.payment_method || "cash", body.note || null);
   const txId = txResult.lastInsertRowid as number;
 
-  const stmtDetail = db.prepare("INSERT INTO transaction_details (transaction_id, product_id, product_name, sold_price, quantity, unit_used, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const stmtDetail = db.prepare("INSERT INTO transaction_details (transaction_id, product_id, product_name, sold_price, purchase_price, quantity, unit_used, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   const stmtStock = db.prepare("UPDATE inventory SET stock_quantity = MAX(0, stock_quantity - ?), updated_at = datetime('now','localtime') WHERE product_id = ?");
 
   for (const d of details) {
-    stmtDetail.run(txId, d.product_id, d.product_name, d.sold_price, d.quantity, d.unit_used, d.subtotal);
+    stmtDetail.run(txId, d.product_id, d.product_name, d.sold_price, d.purchase_price, d.quantity, d.unit_used, d.subtotal);
     stmtStock.run(d.stock_deduct, d.product_id);
   }
 

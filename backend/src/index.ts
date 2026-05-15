@@ -15,6 +15,7 @@ import usersRoutes from "./routes/users";
 import backupRoutes from "./routes/backup";
 import printRoutes from "./routes/print";
 import heldCartsRoutes from "./routes/held-carts";
+import settingsRoutes from "./routes/settings";
 
 const app = new Hono();
 
@@ -38,6 +39,7 @@ app.use("/api/users/*", requireAuth, requireAdmin);
 app.use("/api/backup/*", requireAuth, requireAdmin);
 app.use("/api/print/*", requireAuth);
 app.use("/api/held-carts/*", requireAuth);
+app.use("/api/settings/*", requireAuth, requireAdmin);
 
 app.route("/api/categories", categoriesRoutes);
 app.route("/api/products", productsRoutes);
@@ -48,6 +50,7 @@ app.route("/api/users", usersRoutes);
 app.route("/api/held-carts", heldCartsRoutes);
 app.route("/api/backup", backupRoutes);
 app.route("/api/print", printRoutes);
+app.route("/api/settings", settingsRoutes);
 
 const PORT = Number(process.env.PORT || 3000);
 

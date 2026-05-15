@@ -20,6 +20,9 @@ export function deleteSession(token: string) {
 
 // Middleware: require auth
 export async function requireAuth(c: Context, next: Next) {
+  if (c.req.path === '/api/products/template/excel') {
+    return await next();
+  }
   const token = c.req.header("Authorization")?.replace("Bearer ", "") || "";
   const session = getSession(token);
   if (!session) {

@@ -26,6 +26,8 @@ export function initSchema(db: Database) {
     name TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     barcode TEXT UNIQUE,
+    purchase_price REAL DEFAULT 0,
+    purchase_unit TEXT DEFAULT '',
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     updated_at TEXT DEFAULT (datetime('now','localtime'))
@@ -80,6 +82,7 @@ export function initSchema(db: Database) {
     product_id INTEGER NOT NULL,
     product_name TEXT NOT NULL,
     sold_price REAL NOT NULL,
+    purchase_price REAL DEFAULT 0,
     quantity REAL NOT NULL,
     unit_used TEXT NOT NULL,
     subtotal REAL NOT NULL

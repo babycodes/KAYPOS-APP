@@ -30,10 +30,10 @@ sleep 2
 echo ""
 echo "📦 [Frontend] Installing dependencies..."
 cd "$SCRIPT_DIR/frontend"
-npm install --silent 2>/dev/null || npm install
+~/.local/flutter/bin/flutter pub get
 
 echo "🟢 [Frontend] Starting dev server..."
-npm run dev &
+~/.local/flutter/bin/flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0 &
 FRONTEND_PID=$!
 sleep 3
 
@@ -43,7 +43,7 @@ echo "=========================================="
 echo "  🎉 KAYPOS Berhasil Dijalankan!"
 echo "=========================================="
 echo ""
-echo "  Frontend: http://localhost:5173"
+echo "  Frontend: http://localhost:8080"
 echo "  Backend:  http://localhost:3000"
 echo ""
 echo "  Akun Default:"
