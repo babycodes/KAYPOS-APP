@@ -78,8 +78,11 @@ class _AdminShellState extends State<AdminShell> {
         Padding(padding: const EdgeInsets.all(12), child: Row(children: [
           InkWell(
             onTap: () => setState(() => sidebarOpen = !sidebarOpen),
-            child: Container(width: 40, height: 40, decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
-              child: Center(child: Text('K', style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w900, fontSize: 14))))),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset('assets/icon-512.png', width: 40, height: 40, fit: BoxFit.cover),
+            ),
+          ),
           if (sidebarOpen || isMobile) ...[
             const SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
-import '../../core/theme.dart';
+import '../../core/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -135,15 +135,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-          Positioned(
+        ),
+      ),
+      Positioned(
             top: 24,
             right: 24,
             child: IconButton(
               onPressed: () {
-                final currentMode = context.read<ThemeModeNotifier>().value;
-                context.read<ThemeModeNotifier>().value = currentMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                context.read<ThemeProvider>().toggle();
               },
               icon: Icon(
                 Theme.of(context).brightness == Brightness.light ? Icons.dark_mode : Icons.light_mode,
