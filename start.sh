@@ -8,6 +8,29 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "🚀 KAYPOS Starting..."
 echo ""
 
+# === Flutter Setup ===
+if [ ! -d "$HOME/.local/flutter" ]; then
+    echo "📦 [Setup] Flutter SDK tidak ditemukan di ~/.local/flutter."
+    echo "⚙️  [Setup] Menginstall Flutter (Stable) via Git (Mendukung ARM64/Armbian & x86_64)..."
+    mkdir -p ~/.local
+    
+    # Install standard system dependencies if on apt-based distro (like Armbian/Ubuntu)
+    if command -v apt-get &> /dev/null; then
+        echo "🔧 [Setup] Memasang dependensi sistem (git, curl, unzip, dsb)..."
+        # Gunakan sudo, mungkin meminta password
+        sudo apt-get update && sudo apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+    fi
+
+    echo "📥 [Setup] Mengunduh Flutter SDK..."
+    git clone https://github.com/flutter/flutter.git -b stable ~/.local/flutter
+    
+    echo "✅ [Setup] Flutter berhasil diunduh. Mengunduh toolchain Dart & Flutter..."
+    ~/.local/flutter/bin/flutter --version
+else
+    echo "✅ [Setup] Flutter SDK sudah terpasang."
+fi
+echo ""
+
 # === Backend ===
 echo "📦 [Backend] Installing dependencies..."
 cd "$SCRIPT_DIR/backend"
