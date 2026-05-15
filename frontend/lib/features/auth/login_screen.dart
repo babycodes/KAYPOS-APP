@@ -62,8 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: cs.surface,
-      body: Stack(
-        children: [
+      body: SafeArea(
+        child: Stack(
+          children: [
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -186,6 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
