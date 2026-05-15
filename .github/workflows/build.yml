@@ -11,6 +11,7 @@ jobs:
     name: Build & Release
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -80,15 +81,28 @@ jobs:
         working-directory: frontend/build/linux/x64/release/bundle
         run: tar -czvf KAYPOS-Linux.tar.gz *
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.target == 'macos' && 'frontend/build/macos/Build/Products/Release/KAYPOS-MacOS.zip' || matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows.zip' || matrix.target == 'linux' && 'frontend/build/linux/x64/release/bundle/KAYPOS-Linux.tar.gz' || matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            ${{ matrix.target == 'macos' && 'frontend/build/macos/Build/Products/Release/KAYPOS-MacOS.zip' || '' }}
-            ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows.zip' || '' }}
-            ${{ matrix.target == 'linux' && 'frontend/build/linux/x64/release/bundle/KAYPOS-Linux.tar.gz' || '' }}
-            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' || '' }}
+          tag_name: ${{ github.ref_name || 'v1.0.0-latest' }}
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
