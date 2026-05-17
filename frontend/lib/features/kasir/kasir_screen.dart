@@ -245,7 +245,7 @@ class _KasirScreenState extends State<KasirScreen> {
       Column(children: [
         // === APPBAR ===
         Container(
-          color: cs.primary,
+          color: Theme.of(context).appBarTheme.backgroundColor ?? cs.primary,
           padding: EdgeInsets.only(left: 16, right: 16, top: MediaQuery.of(context).padding.top, bottom: 0),
           constraints: const BoxConstraints(minHeight: 48),
           child: SizedBox(height: 48, child: Row(children: [
@@ -571,7 +571,7 @@ class _KasirScreenState extends State<KasirScreen> {
       // Mobile Bottom Nav
       bottomNavigationBar: isMobile ? Container(
         margin: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-        decoration: BoxDecoration(color: cs.surfaceBright.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(24),
+        decoration: BoxDecoration(color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? cs.surfaceBright.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(24),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]),
         child: ClipRRect(borderRadius: BorderRadius.circular(24),
           child: BottomNavigationBar(
