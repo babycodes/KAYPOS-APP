@@ -365,7 +365,7 @@ class _KasirScreenState extends State<KasirScreen> {
                   if (cart.isNotEmpty) ...[const SizedBox(width: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
                     child: Text('${cart.length}', style: TextStyle(color: cs.onPrimary, fontSize: 12, fontWeight: FontWeight.bold)))],
                 ]),
-                if (cart.isNotEmpty) TextButton(onPressed: () => setState(() { cart.clear(); activeCartLabel = null; }), child: Text('Kosongkan', style: TextStyle(color: cs.error, fontSize: 12, fontWeight: FontWeight.w600))),
+                if (cart.isNotEmpty) TextButton(onPressed: _clearCart, child: Text('Kosongkan', style: TextStyle(color: cs.error, fontSize: 12, fontWeight: FontWeight.w600))),
               ])),
               const Divider(height: 1),
               Expanded(child: cart.isEmpty
@@ -510,7 +510,7 @@ class _KasirScreenState extends State<KasirScreen> {
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Row(children: [const Text('🛒 Keranjang', style: TextStyle(fontWeight: FontWeight.bold)), const SizedBox(width: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)), child: Text('${cart.length}', style: TextStyle(color: cs.onPrimary, fontSize: 12, fontWeight: FontWeight.bold)))]),
                 Row(children: [
-                  if (cart.isNotEmpty) TextButton(onPressed: () => setState(() => cart.clear()), child: Text('Kosongkan', style: TextStyle(color: cs.error, fontSize: 12))),
+                  if (cart.isNotEmpty) TextButton(onPressed: _clearCart, child: Text('Kosongkan', style: TextStyle(color: cs.error, fontSize: 12))),
                   InkWell(onTap: () => setState(() => cartOpen = false), child: Container(width: 32, height: 32, decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant))),
                 ]),
               ])),
@@ -640,6 +640,24 @@ class _KasirScreenState extends State<KasirScreen> {
       setState(() { cart.clear(); cartOpen = false; activeCartLabel = null; });
       await _loadHeldCarts(); _loadData();
     } catch (e) { if (mounted) showToast(context, 'Gagal: $e'); }
+  }
+
+  Future<void> _clearCart() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const KayConfirmDialog(
+        title: 'Kosongkan Keranjang',
+        message: 'Apakah Anda yakin ingin mengosongkan semua item di keranjang ini?',
+        confirmText: 'Ya, Kosongkan',
+      ),
+    );
+    if (confirmed == true) {
+      setState(() {
+        cart.clear();
+        activeCartLabel = null;
+        if (isMobile) cartOpen = false;
+      });
+    }
   }
 
   Future<void> _recallCart(dynamic held) async {
