@@ -83,9 +83,14 @@ class AppTheme {
         },
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: primary,
+        backgroundColor: Colors.red,
         foregroundColor: onPrimary,
         elevation: 0,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.red,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -141,9 +146,14 @@ class AppTheme {
         },
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF0F172A),
+        backgroundColor: Colors.red,
         foregroundColor: Color(0xFFE2E8F0),
         elevation: 0,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.red,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
