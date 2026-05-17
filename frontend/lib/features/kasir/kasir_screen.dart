@@ -460,7 +460,7 @@ class _KasirScreenState extends State<KasirScreen> {
                   Row(children: [
                     Expanded(child: SizedBox(height: 32, child: FilledButton(onPressed: () => _recallCart(h), style: FilledButton.styleFrom(padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text('Panggil', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))))),
                     const SizedBox(width: 8),
-                    SizedBox(height: 32, child: FilledButton(onPressed: () => _deleteHeldCart(h['id']),
+                    SizedBox(height: 32, child: FilledButton(onPressed: () => _deleteHeldCart(h['id'], h['label'] ?? 'antrian ini'),
                       style: FilledButton.styleFrom(backgroundColor: cs.errorContainer.withValues(alpha: 0.5), foregroundColor: cs.error, padding: const EdgeInsets.symmetric(horizontal: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                       child: const Text('Hapus', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)))),
                   ]),
@@ -651,7 +651,10 @@ class _KasirScreenState extends State<KasirScreen> {
     await _loadHeldCarts();
   }
 
-  Future<void> _deleteHeldCart(int id) async {
+  Future<void> _deleteHeldCart(int id, String label) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (_) => KayConfirmDialog(
+      title: 'Hapus Antrian', message: 'Yakin ingin menghapus antrian "$label"? Semua item akan dihapus.', confirmText: 'Ya, Hapus'));
+    if (confirmed != true) return;
     try { await Api.delete('/held-carts/$id'); await _loadHeldCarts(); _loadData(); } catch (_) {}
   }
 

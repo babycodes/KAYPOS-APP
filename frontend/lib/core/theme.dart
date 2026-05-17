@@ -83,12 +83,12 @@ class AppTheme {
         },
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.pink,
         foregroundColor: onPrimary,
         elevation: 0,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.pink,
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white70,
       ),
@@ -146,12 +146,12 @@ class AppTheme {
         },
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.pink,
         foregroundColor: Color(0xFFE2E8F0),
         elevation: 0,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.pink,
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white70,
       ),
