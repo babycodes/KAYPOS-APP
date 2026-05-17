@@ -36,7 +36,9 @@ class UpdateService {
       if (response.statusCode == 200) {
         final data = response.data;
         final String latestVersion = data['version'];
-        final String releaseNotes = data['releaseNotes'] ?? '';
+        String releaseNotes = (data['releaseNotes'] ?? '').toString();
+        // Bersihkan link GitHub Changelog agar UI lebih rapi
+        releaseNotes = releaseNotes.replaceAll(RegExp(r'\*\*Full Changelog\*\*.*', dotAll: true), '').trim();
         final Map<String, dynamic> assetsUrls = data['assets'] ?? {};
 
         if (_isNewerVersion(currentVersion, latestVersion)) {
@@ -110,8 +112,24 @@ class UpdateService {
         } else {
           throw Exception('Izin untuk menginstal aplikasi tidak diberikan.');
         }
+      } else if (Platform.isLinux) {
+        // Eksekusi instalasi otomatis di Linux menggunakan pkexec
+        ProcessResult result;
+        if (filePath.endsWith('.rpm')) {
+          result = await Process.run('pkexec', ['dnf', 'localinstall', '-y', filePath]);
+        } else {
+          result = await Process.run('pkexec', ['apt-get', 'install', '-y', filePath]);
+        }
+        
+        if (result.exitCode == 0) {
+          // Restart aplikasi secara otomatis setelah selesai
+          Process.start('/opt/kaypos/kaypos', []);
+          exit(0);
+        } else {
+          throw Exception('Instalasi dibatalkan atau gagal: ${result.stderr}');
+        }
       } else {
-        // Untuk Windows (.exe), macOS (.dmg), Linux (.deb), eksekusi via OS
+        // Untuk Windows (.exe), macOS (.dmg)
         final result = await OpenFilex.open(filePath);
         if (result.type != ResultType.done) {
           throw Exception('Gagal mengeksekusi installer: ${result.message}');
@@ -141,12 +159,21 @@ class UpdateService {
     return false; // Sama atau format salah
   }
 
+  /// Helper: Cek apakah OS Linux adalah keluarga Fedora/RedHat
+  bool _isFedora() {
+    if (!Platform.isLinux) return false;
+    return File('/etc/fedora-release').existsSync() || File('/etc/redhat-release').existsSync() || File('/usr/bin/rpm').existsSync();
+  }
+
   /// Helper: Mendapatkan URL unduhan sesuai platform OS
   String? _getDownloadUrlForCurrentPlatform(Map<String, dynamic> assetsUrls) {
     if (Platform.isAndroid) return assetsUrls['apk'];
     if (Platform.isWindows) return assetsUrls['exe'];
     if (Platform.isMacOS) return assetsUrls['dmg'];
-    if (Platform.isLinux) return assetsUrls['deb'];
+    if (Platform.isLinux) {
+      if (_isFedora()) return assetsUrls['rpm'] ?? assetsUrls['deb'];
+      return assetsUrls['deb'];
+    }
     return null;
   }
 
@@ -155,7 +182,10 @@ class UpdateService {
     if (Platform.isAndroid) return '.apk';
     if (Platform.isWindows) return '.exe';
     if (Platform.isMacOS) return '.dmg';
-    if (Platform.isLinux) return '.deb';
+    if (Platform.isLinux) {
+      if (_isFedora()) return '.rpm';
+      return '.deb';
+    }
     return '';
   }
 }
