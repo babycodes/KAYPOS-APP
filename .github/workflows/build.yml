@@ -85,6 +85,7 @@ jobs:
         run: |
           mkdir -p package_root/opt/kaypos
           cp -r build/linux/x64/release/bundle/* package_root/opt/kaypos/
+          mv package_root/opt/kaypos/Kaypos package_root/opt/kaypos/kaypos
           
           mkdir -p package_root/usr/share/applications
           cat <<EOF > package_root/usr/share/applications/kaypos.desktop
