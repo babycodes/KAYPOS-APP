@@ -261,25 +261,27 @@ class _KasirScreenState extends State<KasirScreen> {
           decoration: BoxDecoration(color: cs.surface, border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)))),
           child: Row(children: [
             // Category dropdown
-            Container(height: 36, constraints: const BoxConstraints(maxWidth: 220), padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5))),
-              child: DropdownButtonHideUnderline(child: DropdownButton<int?>(
-                value: selectedCategory, isExpanded: true, isDense: true,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('📦 Semua Kategori')),
-                  ...categories.map((c) => DropdownMenuItem(value: c['id'] as int, child: Text('${c['icon'] ?? '📦'} ${c['name']}'))),
-                ],
-                onChanged: (v) => setState(() => selectedCategory = v),
-              ))),
+            Builder(builder: (ctx) {
+              final dropdown = Container(height: 36, constraints: isMobile ? null : const BoxConstraints(maxWidth: 220), padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5))),
+                child: DropdownButtonHideUnderline(child: DropdownButton<int?>(
+                  value: selectedCategory, isExpanded: true, isDense: true,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('📦 Semua Kategori')),
+                    ...categories.map((c) => DropdownMenuItem(value: c['id'] as int, child: Text('${c['icon'] ?? '📦'} ${c['name']}'))),
+                  ],
+                  onChanged: (v) => setState(() => selectedCategory = v),
+                )));
+              return isMobile ? Expanded(child: dropdown) : dropdown;
+            }),
             const SizedBox(width: 8),
             // Desktop search
-            if (!isMobile) Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: SizedBox(height: 40, child: TextField(
+            if (!isMobile) Expanded(child: Padding(padding: const EdgeInsets.only(right: 12), child: SizedBox(height: 40, child: TextField(
               onChanged: (v) => setState(() => searchQuery = v),
               style: TextStyle(fontSize: 13, color: cs.onSurface),
               decoration: const InputDecoration(hintText: 'Cari produk...', prefixIcon: Icon(Icons.search, size: 18)),
             )))),
-            if (isMobile) const Spacer(),
             // Desktop buttons
             if (!isMobile) ...[
               const SizedBox(width: 8),
@@ -571,7 +573,7 @@ class _KasirScreenState extends State<KasirScreen> {
       // Mobile Bottom Nav
       bottomNavigationBar: isMobile ? Container(
         margin: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-        decoration: BoxDecoration(color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? cs.surfaceBright.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(24),
+        decoration: BoxDecoration(color: cs.surfaceBright.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(24),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]),
         child: ClipRRect(borderRadius: BorderRadius.circular(24),
           child: BottomNavigationBar(
