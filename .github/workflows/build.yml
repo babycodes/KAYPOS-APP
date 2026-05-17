@@ -74,11 +74,11 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > app/upload-keystore.jks
             cat <<EOF > key.properties
-            storePassword=${{ secrets.STORE_PASSWORD }}
-            keyPassword=${{ secrets.KEY_PASSWORD }}
-            keyAlias=${{ secrets.KEY_ALIAS }}
-            storeFile=upload-keystore.jks
-            EOF
+storePassword=${{ secrets.STORE_PASSWORD }}
+keyPassword=${{ secrets.KEY_PASSWORD }}
+keyAlias=${{ secrets.KEY_ALIAS }}
+storeFile=upload-keystore.jks
+EOF
           fi
 
       - name: Build Application
