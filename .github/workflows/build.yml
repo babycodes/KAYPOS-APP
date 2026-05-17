@@ -92,12 +92,15 @@ jobs:
           Name=Kaypos
           GenericName=Point of Sale
           Comment=A modern Point of Sale application
-          Exec=/opt/kaypos/Kaypos
+          Exec=/opt/kaypos/kaypos
           Icon=kaypos
           Terminal=false
           Type=Application
           Categories=Utility;
           EOF
+          
+          mkdir -p package_root/usr/bin
+          ln -s /opt/kaypos/kaypos package_root/usr/bin/kaypos
           
           mkdir -p package_root/usr/share/icons/hicolor/512x512/apps
           cp assets/icon-512.png package_root/usr/share/icons/hicolor/512x512/apps/kaypos.png
