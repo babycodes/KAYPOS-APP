@@ -73,12 +73,10 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > app/upload-keystore.jks
-            cat <<EOF > key.properties
-storePassword=${{ secrets.STORE_PASSWORD }}
-keyPassword=${{ secrets.KEY_PASSWORD }}
-keyAlias=${{ secrets.KEY_ALIAS }}
-storeFile=upload-keystore.jks
-EOF
+            echo "storePassword=${{ secrets.STORE_PASSWORD }}" > key.properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
+            echo "storeFile=upload-keystore.jks" >> key.properties
           fi
 
       - name: Build Application
