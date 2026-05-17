@@ -655,7 +655,7 @@ class _KasirScreenState extends State<KasirScreen> {
       setState(() {
         cart.clear();
         activeCartLabel = null;
-        if (isMobile) cartOpen = false;
+        if (MediaQuery.sizeOf(context).width < 768) cartOpen = false;
       });
     }
   }
