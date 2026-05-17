@@ -18,12 +18,25 @@ String fmtDate(String d) {
 }
 
 void showToast(BuildContext context, String msg) {
+  final height = MediaQuery.of(context).size.height;
+  final width = MediaQuery.of(context).size.width;
+  final cs = Theme.of(context).colorScheme;
+
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
+      content: Text(
+        msg, 
+        style: TextStyle(fontWeight: FontWeight.w600, color: cs.onPrimary),
+        textAlign: TextAlign.center,
+      ),
+      backgroundColor: cs.primary,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+      margin: EdgeInsets.only(
+        bottom: (height - 100) > 0 ? (height - 100) : 20, // push to top
+        left: width * 0.25,   // center, half width
+        right: width * 0.25,
+      ),
       duration: const Duration(seconds: 3),
     ),
   );
