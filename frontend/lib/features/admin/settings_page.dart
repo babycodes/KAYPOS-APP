@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../core/api.dart';
 import '../../core/helpers.dart';
+import '../../services/update_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -22,6 +23,10 @@ class _SettingsPageState extends State<SettingsPage> {
   List<dynamic> detectedPrinters = [];
   bool detecting = false;
   String testMsg = '';
+
+  final UpdateService _updateService = UpdateService();
+  bool _isCheckingUpdate = false;
+  double _downloadProgress = 0.0;
 
   final _storeNameCtrl = TextEditingController();
   final _storeAddressCtrl = TextEditingController();
@@ -148,6 +153,86 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  void _checkForUpdates() async {
+    setState(() {
+      _isCheckingUpdate = true;
+      _downloadProgress = 0.0;
+    });
+    
+    try {
+      final updateInfo = await _updateService.checkUpdate();
+      if (updateInfo != null) {
+        _showUpdateDialog(updateInfo);
+      } else {
+        if (mounted) showToast(context, 'Aplikasi sudah versi terbaru.');
+      }
+    } catch (e) {
+      if (mounted) showToast(context, e.toString());
+    } finally {
+      setState(() => _isCheckingUpdate = false);
+    }
+  }
+
+  void _showUpdateDialog(UpdateInfo updateInfo) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text('Update Tersedia (v${updateInfo.version})'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(updateInfo.releaseNotes.isNotEmpty ? updateInfo.releaseNotes : 'Pembaruan sistem dan fitur terbaru tersedia.'),
+                const SizedBox(height: 20),
+                if (_downloadProgress > 0 && _downloadProgress < 100) ...[
+                  LinearProgressIndicator(value: _downloadProgress / 100),
+                  const SizedBox(height: 8),
+                  Text('${_downloadProgress.toStringAsFixed(1)}% diunduh'),
+                ] else if (_downloadProgress >= 100) ...[
+                  const Text('Selesai mengunduh. Menyiapkan instalasi...', style: TextStyle(color: Colors.green)),
+                ] else ...[
+                  const Text('Pembaruan ini aman dan TIDAK AKAN menghapus data toko atau database Anda.', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                ]
+              ],
+            ),
+            actions: [
+              if (_downloadProgress == 0)
+                TextButton(
+                  onPressed: () {
+                    _updateService.cancelDownload();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Nanti Saja'),
+                ),
+              ElevatedButton(
+                onPressed: (_downloadProgress > 0 && _downloadProgress < 100) ? null : () async {
+                  final path = await _updateService.downloadUpdate(
+                    downloadUrl: updateInfo.downloadUrl,
+                    version: updateInfo.version,
+                    onProgress: (received, total) {
+                      if (total != -1) {
+                        setStateDialog(() {
+                          _downloadProgress = (received / total * 100);
+                        });
+                      }
+                    },
+                  );
+                  if (path != null && mounted) {
+                    Navigator.pop(context); // Tutup dialog
+                    await _updateService.installUpdate(path);
+                  }
+                },
+                child: Text(_downloadProgress > 0 ? 'Mengunduh...' : 'Update Sekarang'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -244,6 +329,22 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
             if (restoreMsg.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Center(child: Text(restoreMsg, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: cs.primary)))),
           ]),
+          const SizedBox(height: 24),
+
+          // Update System
+          _SectionBox(cs, title: 'Pembaruan Sistem', icon: Icons.system_update, children: [
+            Text('Periksa versi terbaru aplikasi KAYPOS. Data produk, pengaturan, dan riwayat transaksi tidak akan hilang setelah pembaruan.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _isCheckingUpdate ? null : _checkForUpdates,
+              icon: _isCheckingUpdate 
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                : const Icon(Icons.cloud_download),
+              label: Text(_isCheckingUpdate ? 'Mengecek...' : 'Cek Pembaruan', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary, minimumSize: const Size(double.infinity, 48)),
+            ),
+          ]),
+          const SizedBox(height: 24),
         ]),
       ),
     );
