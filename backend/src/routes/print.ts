@@ -95,18 +95,48 @@ print.post("/receipt", async (c) => {
     
     const product = db.prepare("SELECT base_unit FROM products WHERE id = ?").get(d.product_id) as any;
     const baseUnit = product ? (product.base_unit || 'pcs') : 'pcs';
-    const unitDef = db.prepare("SELECT qty_per_unit FROM product_units WHERE product_id = ? AND unit_name = ?").get(d.product_id, d.unit_used) as any;
+    const allUnits = db.prepare("SELECT * FROM product_units WHERE product_id = ?").all(d.product_id) as any[];
+    const unitDef = allUnits.find(u => u.unit_name === d.unit_used);
     const multiplier = unitDef ? unitDef.qty_per_unit : 1;
     
-    let displayUnit = d.unit_used;
-    if (multiplier > 1) {
-      displayUnit = `${multiplier} ${baseUnit}`;
+    const totalBase = d.quantity * multiplier;
+    let reachesHigherUnit = false;
+    for (const u of allUnits) {
+      if (u.qty_per_unit > multiplier && totalBase >= u.qty_per_unit) {
+        reachesHigherUnit = true;
+        break;
+      }
+    }
+
+    let displayStr = "";
+    if (reachesHigherUnit) {
+      const sortedUnits = [...allUnits].sort((a, b) => b.qty_per_unit - a.qty_per_unit);
+      let remaining = totalBase;
+      let stockStr = "";
+      for (const u of sortedUnits) {
+        if (u.qty_per_unit > 1 && remaining >= u.qty_per_unit) {
+          const majorQty = Math.floor(remaining / u.qty_per_unit);
+          remaining = remaining - (majorQty * u.qty_per_unit);
+          stockStr += `${majorQty} ${u.unit_name} `;
+        }
+      }
+      if (remaining > 0.001 || stockStr === "") {
+        const remStr = remaining % 1 === 0 ? remaining.toString() : remaining.toFixed(2).replace(/\.?0+$/, '');
+        stockStr += `${remStr} ${baseUnit}`;
+      }
+      displayStr = stockStr.trim();
     } else {
-      displayUnit = baseUnit;
+      let unitDisplay = d.unit_used;
+      if (multiplier > 1) {
+        unitDisplay = `${multiplier} ${baseUnit}`;
+      } else {
+        unitDisplay = baseUnit;
+      }
+      displayStr = `${d.quantity}x ${unitDisplay}`;
     }
 
     // Qty x Price = Subtotal (right-aligned)
-    const qtyInfo = `  ${d.quantity}x ${displayUnit} @ ${formatRp(d.sold_price)}`;
+    const qtyInfo = `  ${displayStr} @ ${formatRp(d.sold_price)}`;
     const subtotal = formatRp(d.subtotal);
     receipt += padLine(qtyInfo, subtotal) + "\n";
   }

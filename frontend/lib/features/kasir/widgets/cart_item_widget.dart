@@ -56,12 +56,28 @@ class _CartItemWidgetState extends State<CartItemWidget> {
     final multiplier = (selectedUnit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
     final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
 
-    String unitDisplay;
-    if (multiplier > 1) {
-      final multStr = multiplier == multiplier.roundToDouble() ? '${multiplier.round()}' : multiplier.toStringAsFixed(2);
-      unitDisplay = '$multStr $baseUnitName';
+    final totalBase = quantity * multiplier;
+    bool reachesHigherUnit = false;
+    for (final u in units) {
+      final qpu = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      if (qpu > multiplier && totalBase >= qpu) {
+        reachesHigherUnit = true;
+        break;
+      }
+    }
+
+    String formattedSubtitle;
+    if (reachesHigherUnit) {
+      formattedSubtitle = formatStock(totalBase, units, baseUnitName);
     } else {
-      unitDisplay = baseUnitName;
+      String unitDisplay;
+      if (multiplier > 1) {
+        final multStr = multiplier == multiplier.roundToDouble() ? '${multiplier.round()}' : multiplier.toStringAsFixed(2);
+        unitDisplay = '$multStr $baseUnitName';
+      } else {
+        unitDisplay = baseUnitName;
+      }
+      formattedSubtitle = '${qtyStr}x $unitDisplay';
     }
 
     return Container(
@@ -72,7 +88,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(widget.item['product']['name'] ?? '', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: cs.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 1),
-          Text('${fmtPrice(unitPrice)} × ${qtyStr}x $unitDisplay', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+          Text('${fmtPrice(unitPrice)} × $formattedSubtitle', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
         ])),
         const SizedBox(width: 4),
         // Subtotal
