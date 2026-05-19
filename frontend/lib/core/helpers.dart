@@ -72,29 +72,30 @@ String formatStock(num baseStock, List<dynamic>? units, String? baseUnit) {
 String formatCartItemDisplay(double qty, dynamic currentUnitData, List<dynamic>? productUnits, String? baseUnit) {
   final bUnit = (baseUnit == null || baseUnit.trim().isEmpty) ? 'pcs' : baseUnit.trim();
   final currentMultiplier = (currentUnitData?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+  final currentUnitName = (currentUnitData?['unit_name'] as String?) ?? bUnit;
   final totalBase = qty * currentMultiplier;
 
   if (productUnits != null && productUnits.isNotEmpty) {
     final sortedUnits = List.from(productUnits)..sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
     
-    double largestValidMultiplier = 0.0;
-    for (final u in sortedUnits) {
+    bool canUpgrade = sortedUnits.any((u) {
       final qpu = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
-      if (totalBase >= qpu) {
-        largestValidMultiplier = qpu;
-        break;
-      }
-    }
+      return qpu > currentMultiplier && totalBase >= qpu;
+    });
 
-    if (largestValidMultiplier > currentMultiplier) {
+    if (canUpgrade) {
       return formatStock(totalBase, productUnits, baseUnit);
     }
   }
 
-  final qtyStr = qty == qty.roundToDouble() ? '${qty.round()}' : qty.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
-  
+  final qtyStr = qty == qty.truncateToDouble() ? qty.truncate().toString() : qty.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+
+  if (qty == 1) {
+    return '1 $currentUnitName';
+  }
+
   if (currentMultiplier > 1) {
-    final multStr = currentMultiplier == currentMultiplier.roundToDouble() ? '${currentMultiplier.round()}' : currentMultiplier.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    final multStr = currentMultiplier == currentMultiplier.truncateToDouble() ? currentMultiplier.truncate().toString() : currentMultiplier.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
     return '${qtyStr}x $multStr $bUnit';
   } else {
     return '${qtyStr}x $bUnit';

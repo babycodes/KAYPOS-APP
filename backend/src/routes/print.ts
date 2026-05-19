@@ -102,16 +102,11 @@ print.post("/receipt", async (c) => {
     const totalBase = d.quantity * multiplier;
     
     const sortedUnits = [...allUnits].sort((a, b) => b.qty_per_unit - a.qty_per_unit);
-    let largestValidMultiplier = 0;
-    for (const u of sortedUnits) {
-      if (totalBase >= u.qty_per_unit) {
-        largestValidMultiplier = u.qty_per_unit;
-        break;
-      }
-    }
+    
+    const canUpgrade = sortedUnits.some(u => u.qty_per_unit > multiplier && totalBase >= u.qty_per_unit);
 
     let displayStr = "";
-    if (largestValidMultiplier > multiplier) {
+    if (canUpgrade) {
       let remaining = totalBase;
       let stockStr = "";
       for (const u of sortedUnits) {
@@ -128,11 +123,15 @@ print.post("/receipt", async (c) => {
       displayStr = stockStr.trim();
     } else {
       const qtyStr = d.quantity % 1 === 0 ? d.quantity.toString() : d.quantity.toFixed(2).replace(/\.?0+$/, '');
-      if (multiplier > 1) {
-        const multStr = multiplier % 1 === 0 ? multiplier.toString() : multiplier.toFixed(2).replace(/\.?0+$/, '');
-        displayStr = `${qtyStr}x ${multStr} ${baseUnit}`;
+      if (d.quantity === 1) {
+        displayStr = `1 ${d.unit_used}`;
       } else {
-        displayStr = `${qtyStr}x ${baseUnit}`;
+        if (multiplier > 1) {
+          const multStr = multiplier % 1 === 0 ? multiplier.toString() : multiplier.toFixed(2).replace(/\.?0+$/, '');
+          displayStr = `${qtyStr}x ${multStr} ${baseUnit}`;
+        } else {
+          displayStr = `${qtyStr}x ${baseUnit}`;
+        }
       }
     }
 
