@@ -47,6 +47,8 @@ dependencies:
   package_info_plus: ^4.0.0
   open_filex: ^4.7.0
   permission_handler: ^11.4.0
+  web_socket_channel: ^3.0.3
+  flutter_pos_printer_platform_image_3: ^1.2.4
 
 dev_dependencies:
   flutter_test:
@@ -133,3 +135,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+dependency_overrides:
+  image: ^4.2.0
+  archive: ^3.4.0

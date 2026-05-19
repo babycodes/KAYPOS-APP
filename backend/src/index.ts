@@ -3,6 +3,20 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { requireAuth, requireAdmin } from "./middleware/auth";
+import { createBunWebSocket } from "hono/bun";
+
+const { upgradeWebSocket, websocket } = createBunWebSocket();
+
+export const activeClients = new Set<any>();
+export const broadcastHeldCartsUpdate = () => {
+  activeClients.forEach((ws) => {
+    try {
+      ws.send(JSON.stringify({ event: 'HELD_CARTS_UPDATED' }));
+    } catch (e) {
+      activeClients.delete(ws);
+    }
+  });
+};
 
 // Route imports
 import authRoutes from "./routes/auth";
@@ -52,6 +66,20 @@ app.route("/api/backup", backupRoutes);
 app.route("/api/print", printRoutes);
 app.route("/api/settings", settingsRoutes);
 
+app.get(
+  '/api/ws',
+  upgradeWebSocket((c) => ({
+    onOpen(event, ws) {
+      activeClients.add(ws);
+      console.log('Client connected to WebSocket');
+    },
+    onClose(event, ws) {
+      activeClients.delete(ws);
+      console.log('Client disconnected from WebSocket');
+    },
+  }))
+);
+
 const PORT = Number(process.env.PORT || 3000);
 
 // Get LAN IPs
@@ -77,4 +105,5 @@ export default {
   port: PORT,
   hostname: "0.0.0.0",
   fetch: app.fetch,
+  websocket,
 };

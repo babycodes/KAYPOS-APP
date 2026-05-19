@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import db from "../db/index";
 import { getSession } from "../middleware/auth";
+import { broadcastHeldCartsUpdate } from "../index";
 
 const heldCarts = new Hono();
 
@@ -26,6 +27,8 @@ heldCarts.post("/", async (c) => {
     "INSERT INTO held_carts (label, cart_data, total, created_by, created_by_name) VALUES (?, ?, ?, ?, ?)"
   ).run(label, JSON.stringify(cart_data), total, session?.userId || null, session?.name || 'Unknown');
 
+  broadcastHeldCartsUpdate();
+
   return c.json({ id: result.lastInsertRowid, success: true });
 });
 
@@ -33,6 +36,7 @@ heldCarts.post("/", async (c) => {
 heldCarts.delete("/:id", (c) => {
   const id = c.req.param("id");
   db.prepare("DELETE FROM held_carts WHERE id = ?").run(id);
+  broadcastHeldCartsUpdate();
   return c.json({ success: true });
 });
 

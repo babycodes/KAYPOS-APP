@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,10 @@ import 'dialogs/payment_dialog.dart';
 import 'dialogs/receipt_modal.dart';
 import 'dialogs/unit_selector.dart';
 import 'dialogs/confirm_dialog.dart';
+import 'dialogs/printer_settings_dialog.dart';
 import '../auth/lock_screen.dart';
+import '../../services/websocket_service.dart';
+import '../../services/printer_service.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
@@ -51,6 +55,7 @@ class _KasirScreenState extends State<KasirScreen> {
   List<dynamic> lowStockItems = [];
   List<dynamic> outOfStockItems = [];
   int _mobileNavIndex = 0;
+  StreamSubscription? _wsSubscription;
 
   double get cartTotal => cart.fold(0.0, (s, i) => s + (i['unit_price'] as num) * (i['quantity'] as num));
 
@@ -69,15 +74,26 @@ class _KasirScreenState extends State<KasirScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       if (!auth.isLoggedIn) { context.go('/login'); return; }
+      
+      WebSocketService().connect();
+      PrinterService().init();
+      _wsSubscription = WebSocketService().heldCartsUpdates.listen((_) {
+        if (mounted) {
+          _loadHeldCarts();
+        }
+      });
+
       _loadData();
       _loadDashboard();
       _loadHeldCarts();
-      _loadLowStock();
     });
   }
 
   @override
-  void dispose() { super.dispose(); }
+  void dispose() { 
+    _wsSubscription?.cancel();
+    super.dispose(); 
+  }
 
   void _closeAllModals() {
     showDashboard = false; showHistory = false; showProfile = false;
@@ -89,6 +105,7 @@ class _KasirScreenState extends State<KasirScreen> {
     try {
       final results = await Future.wait([Api.get('/products'), Api.get('/categories')]);
       setState(() { products = results[0] as List; categories = results[1] as List; });
+      _loadLowStock();
     } catch (_) {}
   }
 
@@ -339,6 +356,17 @@ class _KasirScreenState extends State<KasirScreen> {
           try { Api.delete('/held-carts/${activeCartLabel!}'); } catch (_) {}
         }
         _loadDashboard(); _loadData();
+        
+        // Auto print receipt if printer is connected
+        if (PrinterService().isConnected) {
+          try {
+            final printRes = await Api.post('/print/receipt', body: {'transaction_id': result['transaction']['id']});
+            if (printRes['success'] == true && printRes['receipt_base64'] != null) {
+              await PrinterService().printReceipt(base64Decode(printRes['receipt_base64']).toList());
+            }
+          } catch (_) {}
+        }
+        
         showDialog(context: context, builder: (_) => ReceiptModal(transaction: result['transaction'], details: List<Map<String, dynamic>>.from(result['details'])));
       }
     } catch (e) { if (mounted) showToast(context, '❌ ${e.toString().replaceFirst("Exception: ", "")}'); }
@@ -402,6 +430,7 @@ class _KasirScreenState extends State<KasirScreen> {
               style: TextStyle(fontSize: 13, color: cs.onSurface),
               decoration: const InputDecoration(hintText: 'Cari produk...', prefixIcon: Icon(Icons.search, size: 18)),
             )))),
+            
             // Desktop buttons
             if (!isMobile) ...[
               const SizedBox(width: 8),
@@ -411,6 +440,8 @@ class _KasirScreenState extends State<KasirScreen> {
               const SizedBox(width: 4),
               _toolbarBtn(Icons.person, auth.userName, onTap: () => setState(() { _closeAllModals(); showProfile = true; })),
               if (auth.isAdmin) ...[const SizedBox(width: 4), _toolbarBtn(Icons.settings, 'Admin', color: cs.tertiaryContainer, textColor: cs.onTertiaryContainer, onTap: () => context.go('/admin'))],
+              const SizedBox(width: 4),
+              _toolbarBtn(Icons.print, 'Printer', onTap: () { setState(() => _closeAllModals()); showDialog(context: context, builder: (_) => const PrinterSettingsDialog()); }),
               const SizedBox(width: 4),
               _toolbarBtn(Icons.logout, 'Keluar', color: cs.errorContainer.withValues(alpha: 0.5), textColor: cs.error, onTap: _handleLogout),
             ],
@@ -427,6 +458,10 @@ class _KasirScreenState extends State<KasirScreen> {
               const SizedBox(width: 8),
               _toolbarBtn(Icons.access_time, isMobile ? '' : 'Ditahan', color: cs.secondaryContainer, textColor: cs.onSecondaryContainer,
                 badge: heldCarts.length.toString(), onTap: () { setState(() { _closeAllModals(); showHeldCarts = true; }); _loadHeldCarts(); }),
+            ],
+            if (isMobile) ...[
+              const SizedBox(width: 4),
+              _toolbarBtn(Icons.print, '', onTap: () { setState(() => _closeAllModals()); showDialog(context: context, builder: (_) => const PrinterSettingsDialog()); }),
             ],
             const SizedBox(width: 4),
             // Lock button
@@ -521,8 +556,8 @@ class _KasirScreenState extends State<KasirScreen> {
       // === OVERLAYS ===
       // Dashboard overlay
       if (showDashboard) ...[_overlay(() => setState(() => showDashboard = false)),
-        Positioned(bottom: isMobile ? 80 : 16, left: 16, right: isMobile ? 16 : null, width: isMobile ? null : 400,
-          child: Material(elevation: 8, borderRadius: BorderRadius.circular(16), color: cs.surfaceBright,
+        Center(child: Material(elevation: 8, borderRadius: BorderRadius.circular(16), color: cs.surfaceBright,
+          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440),
             child: Padding(padding: const EdgeInsets.all(16), child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text('📊 Rekap Hari Ini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -536,7 +571,7 @@ class _KasirScreenState extends State<KasirScreen> {
                 const SizedBox(width: 8),
                 _statCard('Rata-Rata', fmtPrice(todayStats['avg_transaction'] ?? 0), cs.tertiaryContainer.withValues(alpha: 0.3), cs.tertiary),
               ]),
-            ]))))],
+            ])))))],
       // History overlay
       if (showHistory) ...[_overlay(() => setState(() => showHistory = false)),
         Center(child: Material(elevation: 8, borderRadius: BorderRadius.circular(16), color: cs.surfaceBright,

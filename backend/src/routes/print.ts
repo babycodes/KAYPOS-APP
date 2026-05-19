@@ -1,46 +1,12 @@
 // KAYPOS — Print Route (ESC/POS for 58mm thermal via /dev/usb/lp0)
 import { Hono } from "hono";
 import db from "../db/index";
-import { writeFileSync, readdirSync, existsSync, statSync, accessSync, constants } from "fs";
-import { execSync } from "child_process";
 
 const print = new Hono();
 
-// GET /api/print/detect — Detect connected USB printers
+// GET /api/print/detect — Detect connected USB printers (Moved to Frontend)
 print.get("/detect", (c) => {
-  const printers: { path: string; name: string; writable: boolean }[] = [];
-
-  // Scan common Linux USB printer paths
-  const scanDirs = ["/dev/usb", "/dev"];
-  const patterns = [/^lp\d+$/];
-
-  for (const dir of scanDirs) {
-    if (!existsSync(dir)) continue;
-    try {
-      const files = readdirSync(dir);
-      for (const f of files) {
-        if (!patterns.some(p => p.test(f))) continue;
-        const fullPath = `${dir}/${f}`;
-        try {
-          const stat = statSync(fullPath);
-          if (!stat.isCharacterDevice() && !stat.isBlockDevice() && !stat.isFile()) continue;
-          let writable = false;
-          try { accessSync(fullPath, constants.W_OK); writable = true; } catch {}
-          // Try to get printer name via lpinfo or udevadm
-          let name = fullPath;
-          try {
-            const udev = execSync(`udevadm info --query=property --name=${fullPath} 2>/dev/null | grep -E "ID_MODEL=|ID_VENDOR=" | head -2`, { timeout: 2000 }).toString().trim();
-            const vendor = udev.match(/ID_VENDOR=(.*)/)?.[1] || '';
-            const model = udev.match(/ID_MODEL=(.*)/)?.[1] || '';
-            if (vendor || model) name = `${vendor} ${model}`.trim().replace(/_/g, ' ');
-          } catch {}
-          printers.push({ path: fullPath, name, writable });
-        } catch {}
-      }
-    } catch {}
-  }
-
-  return c.json({ printers, current: (db.prepare("SELECT value FROM settings WHERE key = 'printer_port'").get() as any)?.value || '/dev/usb/lp0' });
+  return c.json({ printers: [], current: '' });
 });
 
 // ESC/POS Constants for 58mm (32 char width)
@@ -99,7 +65,6 @@ print.post("/receipt", async (c) => {
   const storeName = settings.store_name || "KAYPOS Store";
   const storeAddr = settings.store_address || "";
   const storePhone = settings.store_phone || "";
-  const printerPort = settings.printer_port || "/dev/usb/lp0";
 
   // Build receipt
   let receipt = INIT;
@@ -152,13 +117,12 @@ print.post("/receipt", async (c) => {
   receipt += FEED_3;
   receipt += CUT;
 
-  // Send to printer
+  // Send to frontend
   try {
     const buf = Buffer.from(receipt, "binary");
-    writeFileSync(printerPort, buf);
-    return c.json({ success: true, message: "Nota berhasil dicetak!" });
+    return c.json({ success: true, receipt_base64: buf.toString("base64"), message: "Nota siap dicetak" });
   } catch (e: any) {
-    return c.json({ error: `Gagal cetak: ${e.message}. Pastikan printer terhubung di ${printerPort}` }, 500);
+    return c.json({ error: `Gagal format nota: ${e.message}` }, 500);
   }
 });
 
@@ -167,7 +131,6 @@ print.post("/test", async (c) => {
   const settings: Record<string, string> = {};
   const rows = db.prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
   for (const r of rows) settings[r.key] = r.value;
-  const printerPort = settings.printer_port || "/dev/usb/lp0";
 
   try {
     let test = INIT;
@@ -181,8 +144,8 @@ print.post("/test", async (c) => {
     test += FEED_3;
     test += CUT;
 
-    writeFileSync(printerPort, Buffer.from(test, "binary"));
-    return c.json({ success: true, message: "Test print berhasil!" });
+    const buf = Buffer.from(test, "binary");
+    return c.json({ success: true, receipt_base64: buf.toString("base64"), message: "Test print siap!" });
   } catch (e: any) {
     return c.json({ error: `Gagal: ${e.message}` }, 500);
   }

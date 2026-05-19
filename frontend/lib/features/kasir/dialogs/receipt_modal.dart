@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../../../core/api.dart';
 import '../../../core/helpers.dart';
+import '../../../services/printer_service.dart';
 
 class ReceiptModal extends StatefulWidget {
   final dynamic transaction;
@@ -17,8 +19,18 @@ class _ReceiptModalState extends State<ReceiptModal> {
   Future<void> _printReceipt() async {
     setState(() { _printing = true; _printMsg = ''; });
     try {
-      await Api.post('/print/receipt', body: {'transaction_id': widget.transaction['id']});
-      setState(() => _printMsg = '✅ Nota berhasil dicetak!');
+      if (!PrinterService().isConnected) {
+        setState(() { _printMsg = '⚠️ Printer belum terhubung'; _printing = false; });
+        return;
+      }
+      final res = await Api.post('/print/receipt', body: {'transaction_id': widget.transaction['id']});
+      if (res['success'] == true && res['receipt_base64'] != null) {
+        final bytes = base64Decode(res['receipt_base64']);
+        await PrinterService().printReceipt(bytes.toList());
+        setState(() => _printMsg = '✅ Nota berhasil dicetak!');
+      } else {
+        setState(() => _printMsg = '⚠️ Gagal format nota');
+      }
     } catch (e) {
       setState(() => _printMsg = '⚠️ ${e.toString().replaceFirst("Exception: ", "")}');
     }

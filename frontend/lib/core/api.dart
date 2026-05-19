@@ -1,5 +1,6 @@
 // KAYPOS — API Client (matches Svelte api.ts exactly)
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,8 +25,12 @@ class Api {
       if (host.isNotEmpty) {
         return 'http://$host:3000/api';
       }
+      return 'http://localhost:3000/api';
     }
-    // Default fallback
+    
+    // On native mobile/desktop, dart:io Platform is safe to use.
+    // Avoid importing dart:io directly to prevent web compilation issues if used loosely,
+    // but inside a non-web block, it's generally safe if abstracted, or just fallback to 10.0.2.2.
     return 'http://10.0.2.2:3000/api';
   }
 
@@ -42,21 +47,26 @@ class Api {
     }
 
     http.Response response;
-    switch (method) {
-      case 'GET':
-        response = await http.get(url, headers: headers);
-        break;
-      case 'POST':
-        response = await http.post(url, headers: headers, body: body != null ? jsonEncode(body) : null);
-        break;
-      case 'PUT':
-        response = await http.put(url, headers: headers, body: body != null ? jsonEncode(body) : null);
-        break;
-      case 'DELETE':
-        response = await http.delete(url, headers: headers);
-        break;
-      default:
-        throw Exception('Unknown method: $method');
+    try {
+      switch (method) {
+        case 'GET':
+          response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+          break;
+        case 'POST':
+          response = await http.post(url, headers: headers, body: body != null ? jsonEncode(body) : null).timeout(const Duration(seconds: 5));
+          break;
+        case 'PUT':
+          response = await http.put(url, headers: headers, body: body != null ? jsonEncode(body) : null).timeout(const Duration(seconds: 5));
+          break;
+        case 'DELETE':
+          response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 5));
+          break;
+        default:
+          throw Exception('Unknown method: $method');
+      }
+    } catch (e) {
+      if (e is TimeoutException) throw Exception('Koneksi timeout. Pastikan port 3000 tidak diblokir firewall (LAN).');
+      throw Exception('Gagal terhubung ke server');
     }
 
     if (response.statusCode == 401 && !path.contains('/auth/login') && !path.contains('/auth/verify-pin')) {
