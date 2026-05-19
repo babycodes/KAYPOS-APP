@@ -211,7 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 12),
             _Field('NO. TELP', _storePhoneCtrl),
           ]),
-          ]),
           const SizedBox(height: 24),
 
           FilledButton.icon(
