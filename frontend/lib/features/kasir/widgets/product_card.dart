@@ -76,7 +76,7 @@ class ProductCard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: AutoSizeText(
                           toTitleCase(product['name'] ?? ''),
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: MediaQuery.sizeOf(context).width < 768 ? 12 : 14, color: Colors.white, height: 1.1),
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: MediaQuery.sizeOf(context).width < 768 ? 12 : 14, color: isDark ? Colors.white : cs.onSurface, height: 1.1),
                           maxLines: 1, 
                           minFontSize: 8,
                           overflow: TextOverflow.ellipsis,
@@ -89,13 +89,13 @@ class ProductCard extends StatelessWidget {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
-                          child: Text('${fmtPrice(baseUnitPrice)} / $displayUnitName', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.greenAccent, height: 1.1)),
+                          child: Text('${fmtPrice(baseUnitPrice)} / $displayUnitName', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.greenAccent : cs.primary, height: 1.1)),
                         ),
                       ),
                     if (realStock != double.infinity)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text('Stok: ${formatStock(availableStock, units, product['base_unit'] as String?)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: availableStock <= 0 ? Colors.redAccent : Colors.grey[300]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: Text('Stok: ${formatStock(availableStock, units, product['base_unit'] as String?)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: availableStock <= 0 ? (isDark ? Colors.redAccent : cs.error) : (isDark ? Colors.grey[300] : cs.onSurfaceVariant)), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                   ],
                 )),
