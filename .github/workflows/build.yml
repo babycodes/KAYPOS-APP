@@ -31,7 +31,7 @@ jobs:
             target: windows
             build_cmd: flutter build windows --release
             asset_path: frontend/build/windows/x64/runner/Release/
-            asset_name: KAYPOS-Windows.zip
+            asset_name: KAYPOS-Windows-Installer.exe
           - os: macos-latest
             target: macos
             build_cmd: flutter build macos --release
@@ -88,10 +88,32 @@ jobs:
         working-directory: frontend/build/macos/Build/Products/Release
         run: zip -r KAYPOS-MacOS.zip Kaypos.app
 
-      - name: Compress Windows App
+      - name: Build Windows Installer
         if: matrix.target == 'windows'
         working-directory: frontend/build/windows/x64/runner/Release
-        run: Compress-Archive -Path * -DestinationPath KAYPOS-Windows.zip
+        run: |
+          $Version = (Get-Content ../../../../../pubspec.yaml | Select-String "^version: ").ToString().Split(" ")[1].Split("+")[0]
+          if (-not $Version) { $Version = "1.0.0" }
+          $IssContent = @"
+          [Setup]
+          AppName=Kaypos
+          AppVersion=$Version
+          DefaultDirName={autopf}\Kaypos
+          DefaultGroupName=Kaypos
+          OutputDir=.
+          OutputBaseFilename=KAYPOS-Windows-Installer
+          Compression=lzma
+          SolidCompression=yes
+          [Files]
+          Source: "*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{group}\Kaypos"; Filename: "{app}\kaypos.exe"
+          Name: "{commondesktop}\Kaypos"; Filename: "{app}\kaypos.exe"; Tasks: desktopicon
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
+          "@
+          Set-Content -Path "setup.iss" -Value $IssContent -Encoding UTF8
+          iscc setup.iss
 
       - name: Package Linux App (DEB & RPM)
         if: matrix.target == 'linux'
@@ -134,7 +156,7 @@ jobs:
           name: ${{ matrix.asset_name }}
           path: |
             ${{ matrix.target == 'macos' && 'frontend/build/macos/Build/Products/Release/KAYPOS-MacOS.zip' || '' }}
-            ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows.zip' || '' }}
+            ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows-Installer.exe' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.deb' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.rpm' || '' }}
             ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' || '' }}
