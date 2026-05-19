@@ -17,6 +17,11 @@ inventory.get("/", (c) => {
     WHERE p.is_active = 1
     ORDER BY c.sort_order, p.name
   `).all();
+  
+  rows.forEach((r: any) => {
+    r.units = db.prepare("SELECT * FROM product_units WHERE product_id = ? ORDER BY qty_per_unit").all(r.product_id);
+  });
+  
   return c.json(rows);
 });
 
@@ -32,6 +37,11 @@ inventory.get("/low-stock", (c) => {
     WHERE p.is_active = 1 AND i.stock_quantity <= i.min_stock_alert AND i.min_stock_alert > 0 AND i.stock_quantity > 0
     ORDER BY i.stock_quantity ASC
   `).all();
+  
+  rows.forEach((r: any) => {
+    r.units = db.prepare("SELECT * FROM product_units WHERE product_id = ? ORDER BY qty_per_unit").all(r.product_id);
+  });
+  
   return c.json(rows);
 });
 
@@ -47,6 +57,11 @@ inventory.get("/out-of-stock", (c) => {
     WHERE p.is_active = 1 AND i.stock_quantity <= 0
     ORDER BY p.name ASC
   `).all();
+  
+  rows.forEach((r: any) => {
+    r.units = db.prepare("SELECT * FROM product_units WHERE product_id = ? ORDER BY qty_per_unit").all(r.product_id);
+  });
+  
   return c.json(rows);
 });
 

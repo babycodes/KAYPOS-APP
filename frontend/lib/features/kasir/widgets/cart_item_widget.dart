@@ -5,8 +5,9 @@ import '../../../core/helpers.dart';
 class CartItemWidget extends StatefulWidget {
   final Map<String, dynamic> item;
   final VoidCallback onIncrement, onDecrement, onRemove;
+  final VoidCallback? onMaxSplit;
   final ValueChanged<double>? onSetQuantity;
-  const CartItemWidget({super.key, required this.item, required this.onIncrement, required this.onDecrement, required this.onRemove, this.onSetQuantity});
+  const CartItemWidget({super.key, required this.item, required this.onIncrement, required this.onDecrement, required this.onRemove, this.onSetQuantity, this.onMaxSplit});
 
   @override
   State<CartItemWidget> createState() => _CartItemWidgetState();
@@ -62,6 +63,16 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         // Subtotal
         Text(fmtPrice(subtotal), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: cs.primary)),
         const SizedBox(width: 6),
+        if (widget.onMaxSplit != null)
+          InkWell(
+            onTap: widget.onMaxSplit,
+            child: Container(
+              margin: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+              child: const Text('MAX', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blue))
+            )
+          ),
         // Compact qty controls with tappable number
         Container(
           height: 28,

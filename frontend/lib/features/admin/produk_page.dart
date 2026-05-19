@@ -242,10 +242,10 @@ class _ProdukPageState extends State<ProdukPage> {
                         if (!isMobile) Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Stok / Modal', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
                           Row(children: [
-                            Text('$stock', style: TextStyle(fontWeight: FontWeight.bold, color: isLowStock ? cs.error : cs.primary)),
+                            Text(formatStock(stock, units, p['base_unit'] as String?), style: TextStyle(fontWeight: FontWeight.bold, color: isLowStock ? cs.error : cs.primary)),
                             if (p['purchase_price'] != null && p['purchase_price'] > 0) ...[
                               Text(' · ', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-                              Expanded(child: Text('${fmtPrice(p['purchase_price'])}/${p['purchase_unit'] ?? ''}', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
+                              Expanded(child: Text('${fmtPrice(((p['purchase_price'] as num).toDouble()) * (units.firstWhere((u) => u['unit_name'] == p['purchase_unit'], orElse: () => {'qty_per_unit': 1})['qty_per_unit'] as num).toDouble())}/${p['purchase_unit'] ?? ''}', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
                             ]
                           ]),
                         ])),
@@ -253,7 +253,7 @@ class _ProdukPageState extends State<ProdukPage> {
                         if (!isMobile) Expanded(child: Wrap(spacing: 4, runSpacing: 4, children: units.map((u) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(color: cs.secondaryContainer, borderRadius: BorderRadius.circular(6)),
-                          child: Text('${u['qty_per_unit']} ${u['unit_name']} = ${fmtPrice(u['price'])}', style: TextStyle(fontSize: 10, color: cs.onSecondaryContainer)),
+                          child: Text('1 ${u['unit_name']} = ${fmtPrice(u['price'])}', style: TextStyle(fontSize: 10, color: cs.onSecondaryContainer)),
                         )).toList())),
                         PopupMenuButton(
                           icon: const Icon(Icons.more_vert),
@@ -275,10 +275,10 @@ class _ProdukPageState extends State<ProdukPage> {
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text('Stok / Modal', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
                             Row(children: [
-                              Text('$stock', style: TextStyle(fontWeight: FontWeight.bold, color: isLowStock ? cs.error : cs.primary)),
+                              Text(formatStock(stock, units, p['base_unit'] as String?), style: TextStyle(fontWeight: FontWeight.bold, color: isLowStock ? cs.error : cs.primary)),
                               if (p['purchase_price'] != null && p['purchase_price'] > 0) ...[
                                 Text(' · ', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-                                Expanded(child: Text('${fmtPrice(p['purchase_price'])}/${p['purchase_unit'] ?? ''}', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
+                                Expanded(child: Text('${fmtPrice(((p['purchase_price'] as num).toDouble()) * (units.firstWhere((u) => u['unit_name'] == p['purchase_unit'], orElse: () => {'qty_per_unit': 1})['qty_per_unit'] as num).toDouble())}/${p['purchase_unit'] ?? ''}', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
                               ]
                             ]),
                           ])),
@@ -287,7 +287,7 @@ class _ProdukPageState extends State<ProdukPage> {
                         Wrap(spacing: 4, runSpacing: 4, children: units.map((u) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(color: cs.secondaryContainer, borderRadius: BorderRadius.circular(6)),
-                          child: Text('${u['qty_per_unit']} ${u['unit_name']} = ${fmtPrice(u['price'])}', style: TextStyle(fontSize: 10, color: cs.onSecondaryContainer)),
+                          child: Text('1 ${u['unit_name']} = ${fmtPrice(u['price'])}', style: TextStyle(fontSize: 10, color: cs.onSecondaryContainer)),
                         )).toList()),
                       ]
                     ])),
@@ -332,7 +332,7 @@ class ProdukFormDialog extends StatefulWidget {
 class _ProdukFormDialogState extends State<ProdukFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl, _barcodeCtrl, _stockCtrl, _minStockCtrl;
-  late TextEditingController _purchasePriceCtrl;
+  late TextEditingController _purchasePriceCtrl, _baseUnitCtrl;
   final FocusNode _barcodeFocus = FocusNode();
   int _catKey = 0;
   
@@ -344,21 +344,62 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
   bool _isBarcodeEditable = false;
   bool _barcodeExistsOriginally = false;
   String? _selectedPurchaseUnit;
+  String? _selectedStockUnit;
 
   @override
   void initState() {
     super.initState();
     final p = widget.product;
     _nameCtrl = TextEditingController(text: p?['name'] ?? '');
+    _baseUnitCtrl = TextEditingController(text: p?['base_unit'] ?? 'pcs');
+    _baseUnitCtrl.addListener(() { if (mounted) setState(() {}); });
     _barcodeCtrl = TextEditingController(text: p?['barcode'] ?? '');
-    _stockCtrl = TextEditingController(text: (p?['stock_quantity'] ?? 0).toString());
-    _minStockCtrl = TextEditingController(text: (p?['min_stock_alert'] ?? 0).toString());
-    
-    _purchasePriceCtrl = TextEditingController(text: (p?['purchase_price'] ?? 0).toString());
     
     _barcodeExistsOriginally = (p?['barcode'] ?? '').toString().isNotEmpty;
     _isBarcodeEditable = !_barcodeExistsOriginally;
     _selectedPurchaseUnit = p?['purchase_unit']?.toString().isNotEmpty == true ? p!['purchase_unit'] : null;
+
+    if (p != null) {
+      final uList = p['units'] as List? ?? [];
+      _unitPrices = uList.map((u) => {
+        'unit_name': u['unit_name'],
+        'qty_per_unit': u['qty_per_unit'],
+        'price': u['price'],
+      }).toList();
+      
+      double baseStock = (p['stock_quantity'] as num?)?.toDouble() ?? 0;
+      List<dynamic> sortedUnits = List.from(uList);
+      sortedUnits.sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
+      
+      double bestMultiplier = 1.0;
+      String? bestUnit;
+      if (baseStock > 0) {
+        for (var u in sortedUnits) {
+          double m = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+          if (m > 0 && baseStock % m == 0) {
+            bestMultiplier = m;
+            bestUnit = u['unit_name'];
+            break;
+          }
+        }
+      }
+      
+      _selectedStockUnit = bestUnit ?? (p['base_unit']?.toString().isNotEmpty == true ? p['base_unit'] : 'pcs');
+      double displayStock = baseStock / bestMultiplier;
+      _stockCtrl = TextEditingController(text: displayStock == displayStock.roundToDouble() ? displayStock.round().toString() : displayStock.toStringAsFixed(2));
+      
+      double minStockVal = (p['min_stock'] as num? ?? p['min_stock_alert'] as num? ?? 0).toDouble();
+      double displayMinStock = minStockVal / bestMultiplier;
+      _minStockCtrl = TextEditingController(text: displayMinStock == 0 ? '' : (displayMinStock == displayMinStock.roundToDouble() ? displayMinStock.round().toString() : displayMinStock.toStringAsFixed(2)));
+
+      double pp = (p['purchase_price'] as num?)?.toDouble() ?? 0;
+      double totalModal = pp * baseStock;
+      _purchasePriceCtrl = TextEditingController(text: totalModal == 0 ? '' : (totalModal == totalModal.roundToDouble() ? totalModal.round().toString() : totalModal.toStringAsFixed(2)));
+    } else {
+      _stockCtrl = TextEditingController();
+      _minStockCtrl = TextEditingController();
+      _purchasePriceCtrl = TextEditingController();
+    }
 
     _barcodeFocus.addListener(() {
       if (!_barcodeFocus.hasFocus && _isBarcodeEditable && _barcodeExistsOriginally) {
@@ -369,15 +410,6 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
     if (widget.categories.isNotEmpty) {
       _selectedCat = p?['category_id'] ?? widget.categories.first['id'];
       _onCategoryChange(_selectedCat!);
-    }
-
-    if (p != null) {
-      final uList = p['units'] as List? ?? [];
-      _unitPrices = uList.map((u) => {
-        'unit_name': u['unit_name'],
-        'qty_per_unit': u['qty_per_unit'],
-        'price': u['price'],
-      }).toList();
     }
   }
 
@@ -407,7 +439,7 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
     final validNames = _availableUnits.map((u) => u['unit_name']).toList();
     final unused = validNames.where((n) => !_unitPrices.any((up) => up['unit_name'] == n)).toList();
     if (unused.isNotEmpty) {
-      setState(() => _unitPrices.add({ 'unit_name': unused.first, 'qty_per_unit': 1, 'price': 0 }));
+      setState(() => _unitPrices.add({ 'unit_name': unused.first, 'qty_per_unit': '', 'price': '' }));
     }
   }
 
@@ -451,13 +483,30 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
     }
 
     setState(() => isSaving = true);
+    
+    double inputStock = double.tryParse(_stockCtrl.text) ?? 0;
+    double multiplier = 1;
+    final baseUnitName = _baseUnitCtrl.text.trim().isEmpty ? 'pcs' : _baseUnitCtrl.text.trim();
+    if (_selectedStockUnit != null && _selectedStockUnit != baseUnitName) {
+      final unitData = _unitPrices.firstWhere((u) => u['unit_name'] == _selectedStockUnit, orElse: () => <String, dynamic>{});
+      multiplier = (unitData['qty_per_unit'] as num?)?.toDouble() ?? 1;
+    }
+    double finalStock = inputStock * multiplier;
+    
+    double inputMinStock = double.tryParse(_minStockCtrl.text) ?? 0;
+    double finalMinStock = inputMinStock * multiplier;
+
+    double rawPurchasePrice = double.tryParse(_purchasePriceCtrl.text) ?? 0;
+    double purchasePricePerBaseUnit = (rawPurchasePrice > 0 && finalStock > 0) ? (rawPurchasePrice / finalStock) : rawPurchasePrice;
+
     final data = {
-      'name': _nameCtrl.text.trim(),
+      'name': toTitleCase(_nameCtrl.text.trim()),
+      'base_unit': baseUnitName,
       'category_id': _selectedCat,
       'barcode': _barcodeCtrl.text.trim().isEmpty ? null : _barcodeCtrl.text.trim(),
-      'stock': double.tryParse(_stockCtrl.text) ?? 0,
-      'min_stock': double.tryParse(_minStockCtrl.text) ?? 0,
-      'purchase_price': double.tryParse(_purchasePriceCtrl.text) ?? 0,
+      'stock': finalStock,
+      'min_stock': finalMinStock,
+      'purchase_price': purchasePricePerBaseUnit,
       'purchase_unit': _selectedPurchaseUnit ?? '',
       'unit_prices': validPrices,
     };
@@ -504,21 +553,27 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
             child: Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Basic Info
               isMobile ? Column(children: [
-                _field(_nameCtrl, 'Nama Produk', true),
+                _field(_nameCtrl, 'Nama Produk', true, textCapitalization: TextCapitalization.words),
+                const SizedBox(height: 12),
+                _field(_baseUnitCtrl, 'Satuan Terkecil (Base Unit, cth: pcs)', true),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   key: ValueKey(_catKey),
                   value: _selectedCat,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Kategori', isDense: true),
                   items: widget.categories.map((c) => DropdownMenuItem<int>(value: c['id'], child: Text('${c['icon']} ${c['name']}', maxLines: 1, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: _handleCatChange,
                 ),
               ]) : Row(children: [
-                Expanded(flex: 2, child: _field(_nameCtrl, 'Nama Produk', true)),
+                Expanded(flex: 2, child: _field(_nameCtrl, 'Nama Produk', true, textCapitalization: TextCapitalization.words)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(_baseUnitCtrl, 'Satuan Terkecil', true)),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<int>(
                   key: ValueKey(_catKey),
                   value: _selectedCat,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Kategori', isDense: true),
                   items: widget.categories.map((c) => DropdownMenuItem<int>(value: c['id'], child: Text('${c['icon']} ${c['name']}', maxLines: 1, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: _handleCatChange,
@@ -553,6 +608,7 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: _selectedPurchaseUnit,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Satuan Beli (opsional)', isDense: true),
                     items: _availableUnits.map((u) => DropdownMenuItem<String>(value: u['unit_name'], child: Text(u['unit_name']))).toList(),
                     onChanged: (v) => setState(() => _selectedPurchaseUnit = v),
@@ -562,6 +618,7 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
                   const SizedBox(width: 12),
                   Expanded(child: DropdownButtonFormField<String>(
                     value: _selectedPurchaseUnit,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Satuan Beli (opsional)', isDense: true),
                     items: _availableUnits.map((u) => DropdownMenuItem<String>(value: u['unit_name'], child: Text(u['unit_name']))).toList(),
                     onChanged: (v) => setState(() => _selectedPurchaseUnit = v),
@@ -586,6 +643,7 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                         DropdownButtonFormField<String>(
                           value: up['unit_name'],
+                          isExpanded: true,
                           decoration: const InputDecoration(labelText: 'Satuan Jual', isDense: true),
                           items: _availableUnits.map((u) => DropdownMenuItem<String>(value: u['unit_name'], child: Text(u['unit_name']))).toList(),
                           onChanged: (v) => setState(() => _unitPrices[i]['unit_name'] = v!),
@@ -611,6 +669,7 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
                     ) : Row(children: [
                       Expanded(child: DropdownButtonFormField<String>(
                         value: up['unit_name'],
+                        isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Satuan Jual', isDense: true),
                         items: _availableUnits.map((u) => DropdownMenuItem<String>(value: u['unit_name'], child: Text(u['unit_name']))).toList(),
                         onChanged: (v) => setState(() => _unitPrices[i]['unit_name'] = v!),
@@ -641,15 +700,38 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
               // Stock
               const Text('Stok', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              isMobile ? Column(children: [
-                _field(_stockCtrl, 'Stok Awal (dalam unit terkecil)', false, isNum: true),
-                const SizedBox(height: 12),
-                _field(_minStockCtrl, 'Batas Peringatan Stok Minimum', false, isNum: true),
-              ]) : Row(children: [
-                Expanded(child: _field(_stockCtrl, 'Stok Awal (dalam unit terkecil)', false, isNum: true)),
-                const SizedBox(width: 12),
-                Expanded(child: _field(_minStockCtrl, 'Batas Peringatan Stok Minimum', false, isNum: true)),
-              ]),
+              Builder(builder: (context) {
+                final baseUnitName = _baseUnitCtrl.text.trim().isEmpty ? 'pcs' : _baseUnitCtrl.text.trim();
+                final List<String> stockOpts = [baseUnitName];
+                for (var u in _unitPrices) {
+                  if (u['unit_name'] != null && !stockOpts.contains(u['unit_name'])) {
+                    stockOpts.add(u['unit_name']);
+                  }
+                }
+                String currentStockUnit = stockOpts.contains(_selectedStockUnit) ? _selectedStockUnit! : baseUnitName;
+
+                Widget stockInput = Row(children: [
+                  Expanded(flex: 2, child: _field(_stockCtrl, 'Jumlah Stok Masuk', false, isNum: true)),
+                  const SizedBox(width: 8),
+                  Expanded(child: DropdownButtonFormField<String>(
+                    value: currentStockUnit,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Satuan', isDense: true),
+                    items: stockOpts.map((u) => DropdownMenuItem<String>(value: u, child: Text(u))).toList(),
+                    onChanged: (v) => setState(() => _selectedStockUnit = v),
+                  )),
+                ]);
+
+                return isMobile ? Column(children: [
+                  stockInput,
+                  const SizedBox(height: 12),
+                  _field(_minStockCtrl, 'Batas Peringatan Stok Minimum', false, isNum: true),
+                ]) : Row(children: [
+                  Expanded(child: stockInput),
+                  const SizedBox(width: 12),
+                  Expanded(child: _field(_minStockCtrl, 'Batas Peringatan Stok Minimum', false, isNum: true)),
+                ]);
+              }),
             ])),
           )),
           const Divider(height: 1),
@@ -691,9 +773,10 @@ class _ProdukFormDialogState extends State<ProdukFormDialog> {
     _onCategoryChange(v);
   }
 
-  Widget _field(TextEditingController ctrl, String label, bool required, {bool isNum = false, String? prefix}) {
+  Widget _field(TextEditingController ctrl, String label, bool required, {bool isNum = false, String? prefix, TextCapitalization? textCapitalization}) {
     return TextFormField(
       controller: ctrl,
+      textCapitalization: textCapitalization ?? TextCapitalization.none,
       decoration: InputDecoration(labelText: label, isDense: true, prefixText: prefix != null ? '$prefix ' : null),
       keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
       validator: required ? (v) => v == null || v.trim().isEmpty ? 'Wajib' : null : null,

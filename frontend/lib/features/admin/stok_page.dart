@@ -48,25 +48,20 @@ class _StokPageState extends State<StokPage> {
     return items;
   }
 
-  void _openEdit(dynamic item) {
-    setState(() {
-      editId = item['product_id'];
-      _stockCtrl.text = '${(item['stock_quantity'] as num?)?.round() ?? 0}';
-      _minAlertCtrl.text = '${item['min_stock_alert'] ?? 0}';
-    });
-  }
-
-  Future<void> _saveEdit(int productId) async {
+  Future<void> _openRestock(dynamic item) async {
     try {
-      await Api.put('/inventory/$productId', body: {
-        'stock_quantity': double.tryParse(_stockCtrl.text) ?? 0,
-        'min_stock_alert': double.tryParse(_minAlertCtrl.text) ?? 0,
-      });
-      setState(() => editId = null);
-      await _loadData();
-      if (mounted) showToast(context, 'Stok diperbarui');
+      final fullProduct = await Api.get('/products/${item['product_id']}');
+      if (mounted) {
+        showDialog(
+          context: context, 
+          builder: (_) => RestockDialog(
+            product: fullProduct,
+            onSave: _loadData,
+          )
+        );
+      }
     } catch (e) {
-      if (mounted) showToast(context, 'Gagal memperbarui stok: $e');
+      if (mounted) showToast(context, 'Gagal mengambil data produk: $e');
     }
   }
 
@@ -126,7 +121,8 @@ class _StokPageState extends State<StokPage> {
       final alert = (item['min_stock_alert'] as num?)?.toDouble() ?? 0;
       final qty = (item['stock_quantity'] as num?)?.toDouble() ?? 0;
       final isLow = alert > 0 && qty <= alert;
-      final editing = editId == item['product_id'];
+      final units = item['units'] as List? ?? [];
+      final baseUnit = item['base_unit'] as String?;
 
       return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: cs.surfaceBright, borderRadius: BorderRadius.circular(12),
@@ -135,30 +131,20 @@ class _StokPageState extends State<StokPage> {
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              Text('${item['category_name'] ?? '-'} · ${item['base_unit'] ?? '-'}', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+              Text('${item['category_name'] ?? '-'}', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
             ])),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('${qty.round()}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isLow ? cs.error : cs.onSurface)),
-              if (alert > 0) Text('min: $alert', style: TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
+              Text(formatStock(qty, units, baseUnit), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isLow ? cs.error : cs.onSurface)),
+              if (alert > 0) Text('min: ${formatStock(alert, units, baseUnit)}', style: TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
             ]),
             const SizedBox(width: 12),
-            if (!editing) IconButton(onPressed: () => _openEdit(item), icon: Icon(Icons.edit, size: 18, color: cs.primary),
-              style: IconButton.styleFrom(backgroundColor: cs.primaryContainer, padding: const EdgeInsets.all(8), minimumSize: Size.zero)),
+            FilledButton.icon(
+              onPressed: () => _openRestock(item),
+              icon: const Icon(Icons.add_shopping_cart, size: 16),
+              label: const Text('Restock', style: TextStyle(fontSize: 12)),
+              style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 12), minimumSize: const Size(0, 32)),
+            )
           ]),
-          if (editing) ...[
-            const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider(height: 1)),
-            Row(children: [
-              Expanded(child: _editField('Stok', _stockCtrl)),
-              const SizedBox(width: 8),
-              Expanded(child: _editField('Min. Alert', _minAlertCtrl)),
-            ]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              TextButton(onPressed: () => setState(() => editId = null), child: const Text('Batal', style: TextStyle(fontSize: 12))),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: () => _saveEdit(item['product_id']), style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16)), child: const Text('Simpan', style: TextStyle(fontSize: 12))),
-            ])
-          ]
         ]));
     });
   }
@@ -192,30 +178,234 @@ class _StokPageState extends State<StokPage> {
             final alert = (item['min_stock_alert'] as num?)?.toDouble() ?? 0;
             final qty = (item['stock_quantity'] as num?)?.toDouble() ?? 0;
             final isLow = alert > 0 && qty <= alert;
-            final editing = editId == item['product_id'];
+            final units = item['units'] as List? ?? [];
+            final baseUnit = item['base_unit'] as String?;
 
             return DataRow(
               color: isLow ? WidgetStatePropertyAll(cs.errorContainer.withValues(alpha: 0.2)) : null,
               cells: [
                 DataCell(Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600))),
                 DataCell(Text(item['category_name'] ?? '-')),
-                DataCell(editing 
-                  ? SizedBox(width: 80, child: TextField(controller: _stockCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8))))
-                  : Text('${qty.round()}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isLow ? cs.error : cs.onSurface))),
-                DataCell(Text(item['base_unit'] ?? '-')),
-                DataCell(editing
-                  ? SizedBox(width: 80, child: TextField(controller: _minAlertCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8))))
-                  : Text('$alert', style: TextStyle(color: cs.onSurfaceVariant))),
-                DataCell(Align(alignment: Alignment.centerRight, child: editing
-                  ? Row(mainAxisSize: MainAxisSize.min, children: [
-                      TextButton(onPressed: () => setState(() => editId = null), child: const Text('Batal', style: TextStyle(fontSize: 12))),
-                      FilledButton(onPressed: () => _saveEdit(item['product_id']), child: const Text('Simpan', style: TextStyle(fontSize: 12))),
-                    ])
-                  : IconButton(onPressed: () => _openEdit(item), icon: Icon(Icons.edit, size: 18, color: cs.primary), style: IconButton.styleFrom(backgroundColor: cs.primaryContainer, padding: const EdgeInsets.all(8))))),
+                DataCell(Text(formatStock(qty, units, baseUnit), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: isLow ? cs.error : cs.onSurface))),
+                DataCell(Text(baseUnit ?? '-')),
+                DataCell(Text(formatStock(alert, units, baseUnit), style: TextStyle(color: cs.onSurfaceVariant))),
+                DataCell(Align(alignment: Alignment.centerRight, child: FilledButton.icon(
+                  onPressed: () => _openRestock(item),
+                  icon: const Icon(Icons.add_shopping_cart, size: 16),
+                  label: const Text('Restock'),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                ))),
               ]
             );
           }).toList(),
         )
       ])));
+  }
+}
+
+class RestockDialog extends StatefulWidget {
+  final dynamic product;
+  final VoidCallback onSave;
+  const RestockDialog({super.key, required this.product, required this.onSave});
+
+  @override
+  State<RestockDialog> createState() => _RestockDialogState();
+}
+
+class _RestockDialogState extends State<RestockDialog> {
+  final _qtyCtrl = TextEditingController();
+  final _totalCostCtrl = TextEditingController();
+  String? _selectedUnit;
+  List<dynamic> _units = [];
+  Map<String, TextEditingController> _sellingPriceCtrls = {};
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _units = widget.product['units'] as List? ?? [];
+    
+    final baseUnit = widget.product['base_unit'] ?? 'pcs';
+    _selectedUnit = baseUnit;
+    if (_units.isNotEmpty) {
+      if (widget.product['purchase_unit'] != null && widget.product['purchase_unit'].toString().isNotEmpty) {
+        _selectedUnit = widget.product['purchase_unit'];
+      }
+    }
+
+    for (var u in _units) {
+      _sellingPriceCtrls[u['unit_name']] = TextEditingController(text: (u['price'] ?? 0).toString());
+    }
+  }
+
+  void _save() async {
+    double qtyIn = double.tryParse(_qtyCtrl.text) ?? 0;
+    double totalCost = double.tryParse(_totalCostCtrl.text) ?? 0;
+
+    if (qtyIn <= 0) {
+      showToast(context, 'Jumlah masuk harus > 0');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      double multiplier = 1.0;
+      final unitData = _units.firstWhere((u) => u['unit_name'] == _selectedUnit, orElse: () => null);
+      if (unitData != null) {
+        multiplier = (unitData['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      }
+      double addedBaseStock = qtyIn * multiplier;
+
+      final updatedUnitPrices = _units.map((u) {
+        final ctrl = _sellingPriceCtrls[u['unit_name']];
+        double newPrice = ctrl != null ? (double.tryParse(ctrl.text) ?? 0) : (u['price'] as num).toDouble();
+        return {
+          'unit_name': u['unit_name'],
+          'qty_per_unit': u['qty_per_unit'],
+          'price': newPrice,
+        };
+      }).toList();
+
+      final postPayload = {
+        'added_qty': addedBaseStock,
+        'total_cost': totalCost,
+        'purchase_unit': _selectedUnit,
+        'updated_selling_prices': updatedUnitPrices,
+      };
+
+      final updatedProduct = await Api.post('/products/${widget.product['id']}/restock', body: postPayload);
+
+      if (!mounted) return;
+      
+      final newAvco = (updatedProduct['purchase_price'] as num?)?.toDouble() ?? 0;
+      showToast(context, 'Restock berhasil disimpan (AVCO: ${fmtPrice(newAvco)} / base)');
+      widget.onSave();
+      Navigator.pop(context);
+
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      showToast(context, 'Gagal restock: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _qtyCtrl.dispose();
+    _totalCostCtrl.dispose();
+    for (var c in _sellingPriceCtrls.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final p = widget.product;
+    final oldStock = (p['stock_quantity'] as num?)?.toDouble() ?? 0;
+    final oldCost = (p['purchase_price'] as num?)?.toDouble() ?? 0;
+    final baseUnit = p['base_unit'] ?? 'pcs';
+    
+    final List<String> unitOpts = [baseUnit];
+    for (var u in _units) {
+      if (!unitOpts.contains(u['unit_name'])) unitOpts.add(u['unit_name']);
+    }
+    if (!unitOpts.contains(_selectedUnit)) _selectedUnit = baseUnit;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        width: 500,
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Restock Produk', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ]
+              ),
+              const Divider(),
+              Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Sisa Stok', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+                      Text(formatStock(oldStock, _units, baseUnit), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ]),
+                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Text('Modal Lama', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+                      Text('${fmtPrice(oldCost)} / $baseUnit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ]),
+                  ]
+                )
+              ),
+              const SizedBox(height: 20),
+              const Text('Pembelian Baru', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<String>(
+                  value: _selectedUnit,
+                  decoration: const InputDecoration(labelText: 'Satuan Pembelian', isDense: true),
+                  items: unitOpts.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+                  onChanged: (v) => setState(() => _selectedUnit = v),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  controller: _qtyCtrl,
+                  decoration: const InputDecoration(labelText: 'Jumlah Masuk', isDense: true),
+                  keyboardType: TextInputType.number,
+                )),
+              ]),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _totalCostCtrl,
+                decoration: const InputDecoration(labelText: 'Total Harga Beli', prefixText: 'Rp ', isDense: true),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 20),
+              const Text('Penyesuaian Harga Jual', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (_units.isEmpty) 
+                Text('Produk ini belum memiliki satuan jual.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))
+              else
+                ..._units.map((u) {
+                  final name = u['unit_name'];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextFormField(
+                      controller: _sellingPriceCtrls[name],
+                      decoration: InputDecoration(labelText: 'Update Harga Jual ($name)', prefixText: 'Rp ', isDense: true),
+                      keyboardType: TextInputType.number,
+                    ),
+                  );
+                }),
+              
+              const SizedBox(height: 24),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.inventory),
+                  label: const Text('Simpan Restock'),
+                ),
+              ])
+            ]
+          )
+        )
+      )
+    );
   }
 }

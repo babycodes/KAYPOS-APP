@@ -40,8 +40,9 @@ transactions.post("/", async (c) => {
       } catch {}
     }
     availableStock = Math.max(0, availableStock);
-    if (item.quantity > availableStock) {
-      return c.json({ error: `Stok ${product.name} tidak cukup. Tersisa: ${Math.round(availableStock)}, diminta: ${item.quantity}` }, 400);
+    const stockDeduct = item.quantity * (unit.qty_per_unit || 1);
+    if (stockDeduct > availableStock) {
+      return c.json({ error: `Stok ${product.name} tidak cukup. Tersisa: ${Math.round(availableStock)} ${product.base_unit || 'pcs'}, diminta: ${stockDeduct}` }, 400);
     }
 
     // Calculate cost per qty based on purchase_price and purchase_unit
@@ -53,17 +54,17 @@ transactions.post("/", async (c) => {
       }
     }
 
-    // V3: price is for qty_per_unit amount
-    // subtotal = (quantity / qty_per_unit) * price
-    const pricePerOne = unit.price / unit.qty_per_unit;
-    const subtotal = pricePerOne * item.quantity;
+    // V3 Fix: price is the price for the chosen unit.
+    // multiplier = qty_per_unit
+    const subtotal = unit.price * item.quantity;
+    const pricePerOne = unit.price; // the price of 1 selected unit
 
     totalAmount += subtotal;
     details.push({
       product_id: product.id, product_name: product.name,
       sold_price: pricePerOne, purchase_price: costPerQty, quantity: item.quantity,
       unit_used: item.unit_name, subtotal,
-      stock_deduct: item.quantity // deduct by actual quantity in that unit
+      stock_deduct: stockDeduct
     });
   }
 

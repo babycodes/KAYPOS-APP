@@ -79,13 +79,14 @@ products.post("/", async (c) => {
     name: string; category_id: number; barcode?: string;
     purchase_price?: number; purchase_unit?: string;
     stock?: number; min_stock?: number;
+    base_unit?: string;
     unit_prices: { unit_name: string; qty_per_unit: number; price: number }[];
   }>();
   if (!body.name?.trim()) return c.json({ error: "Nama produk wajib" }, 400);
   if (!body.unit_prices?.length) return c.json({ error: "Minimal 1 harga unit wajib" }, 400);
   try {
-    const result = db.prepare("INSERT INTO products (name, category_id, barcode, purchase_price, purchase_unit) VALUES (?, ?, ?, ?, ?)")
-      .run(body.name.trim(), body.category_id, body.barcode || null, body.purchase_price || 0, body.purchase_unit || '');
+    const result = db.prepare("INSERT INTO products (name, category_id, barcode, purchase_price, purchase_unit, base_unit) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(body.name.trim(), body.category_id, body.barcode || null, body.purchase_price || 0, body.purchase_unit || '', body.base_unit || 'pcs');
     const productId = result.lastInsertRowid as number;
     const stmt = db.prepare("INSERT INTO product_units (product_id, unit_name, qty_per_unit, price) VALUES (?, ?, ?, ?)");
     for (const u of body.unit_prices) {
@@ -105,14 +106,16 @@ products.put("/:id", async (c) => {
   const body = await c.req.json<{
     name?: string; category_id?: number; barcode?: string; is_active?: number;
     purchase_price?: number; purchase_unit?: string;
+    base_unit?: string;
     unit_prices?: { unit_name: string; qty_per_unit: number; price: number }[];
   }>();
   db.prepare(`UPDATE products SET
     name = COALESCE(?, name), category_id = COALESCE(?, category_id),
     barcode = COALESCE(?, barcode), is_active = COALESCE(?, is_active),
     purchase_price = COALESCE(?, purchase_price), purchase_unit = COALESCE(?, purchase_unit),
+    base_unit = COALESCE(?, base_unit),
     updated_at = datetime('now','localtime') WHERE id = ?`)
-    .run(body.name, body.category_id, body.barcode, body.is_active, body.purchase_price, body.purchase_unit, id);
+    .run(body.name, body.category_id, body.barcode, body.is_active, body.purchase_price, body.purchase_unit, body.base_unit, id);
   if (body.unit_prices) {
     db.prepare("DELETE FROM product_units WHERE product_id = ?").run(id);
     const stmt = db.prepare("INSERT INTO product_units (product_id, unit_name, qty_per_unit, price) VALUES (?, ?, ?, ?)");
@@ -121,6 +124,54 @@ products.put("/:id", async (c) => {
     }
   }
   return c.json(getFullProduct(id));
+});
+
+// POST /api/products/:id/restock
+products.post("/:id/restock", async (c) => {
+  const id = Number(c.req.param("id"));
+  const body = await c.req.json<{
+    added_qty: number;
+    total_cost: number;
+    purchase_unit: string;
+    updated_selling_prices: { unit_name: string; qty_per_unit: number; price: number }[];
+  }>();
+
+  if (!body.added_qty || body.added_qty <= 0) return c.json({ error: "Jumlah restock tidak valid" }, 400);
+
+  return db.transaction(() => {
+    const product = db.prepare("SELECT p.purchase_price, i.stock_quantity FROM products p JOIN inventory i ON p.id = i.product_id WHERE p.id = ?").get(id) as any;
+    if (!product) return c.json({ error: "Produk tidak ditemukan" }, 404);
+
+    const oldBaseStock = product.stock_quantity || 0;
+    const oldPurchasePrice = product.purchase_price || 0;
+    const newBaseStock = oldBaseStock + body.added_qty;
+
+    // Hitung AVCO
+    const newPurchasePrice = ((oldBaseStock * oldPurchasePrice) + body.total_cost) / newBaseStock;
+
+    // Update produk (modal dan satuan)
+    db.prepare("UPDATE products SET purchase_price = ?, purchase_unit = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+      .run(newPurchasePrice, body.purchase_unit, id);
+
+    // Update stok
+    db.prepare("UPDATE inventory SET stock_quantity = ?, updated_at = datetime('now','localtime') WHERE product_id = ?")
+      .run(newBaseStock, id);
+
+    // Insert riwayat
+    db.prepare("INSERT INTO restock_history (product_id, added_base_stock, total_cost, old_purchase_price, new_purchase_price) VALUES (?, ?, ?, ?, ?)")
+      .run(id, body.added_qty, body.total_cost, oldPurchasePrice, newPurchasePrice);
+
+    // Update unit prices
+    if (body.updated_selling_prices && body.updated_selling_prices.length > 0) {
+      db.prepare("DELETE FROM product_units WHERE product_id = ?").run(id);
+      const stmt = db.prepare("INSERT INTO product_units (product_id, unit_name, qty_per_unit, price) VALUES (?, ?, ?, ?)");
+      for (const u of body.updated_selling_prices) {
+        if (u.price > 0) stmt.run(id, u.unit_name, u.qty_per_unit || 1, u.price);
+      }
+    }
+
+    return c.json(getFullProduct(id));
+  })();
 });
 
 // DELETE /api/products/:id — hard delete

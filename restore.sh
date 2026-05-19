@@ -1,0 +1,2 @@
+"cat << 'EOF' > replace_produk.py\nimport re\n\nwith open('frontend/lib/features/admin/produk_page.dart', 'r') as f:\n    content = f.read()\n\n# We want to replace from `class _ProdukFormDialogState extends State<ProdukFormDialog> {` \n# up to the end of 
+<truncated 21845 bytes>

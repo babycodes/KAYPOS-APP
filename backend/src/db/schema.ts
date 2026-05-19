@@ -53,6 +53,16 @@ export function initSchema(db: Database) {
     updated_at TEXT DEFAULT (datetime('now','localtime'))
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS restock_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    added_base_stock REAL NOT NULL,
+    total_cost REAL NOT NULL,
+    old_purchase_price REAL NOT NULL,
+    new_purchase_price REAL NOT NULL,
+    timestamp TEXT DEFAULT (datetime('now','localtime'))
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,

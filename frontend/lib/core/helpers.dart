@@ -41,3 +41,69 @@ void showToast(BuildContext context, String msg) {
     ),
   );
 }
+
+String formatStock(num baseStock, List<dynamic>? units, String? baseUnit) {
+  final bUnit = (baseUnit == null || baseUnit.trim().isEmpty) ? 'pcs' : baseUnit.trim();
+  if (baseStock <= 0) return '0 $bUnit';
+  
+  if (units != null && units.isNotEmpty) {
+    final sortedUnits = List.from(units)..sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
+    
+    for (final u in sortedUnits) {
+      final qtyPerUnit = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      if (qtyPerUnit > 1 && baseStock >= qtyPerUnit) {
+        final majorQty = (baseStock / qtyPerUnit).floor();
+        final remainder = baseStock - (majorQty * qtyPerUnit);
+        
+        final majorStr = majorQty.toString();
+        if (remainder <= 0.001) {
+          return '$majorStr ${u['unit_name']}';
+        } else {
+          final remStr = remainder == remainder.truncateToDouble() ? remainder.truncate().toString() : remainder.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+          return '$majorStr ${u['unit_name']} $remStr $bUnit';
+        }
+      }
+    }
+  }
+  final bStr = baseStock == baseStock.truncateToDouble() ? baseStock.truncate().toString() : baseStock.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  return '$bStr $bUnit';
+}
+
+String toTitleCase(String text) {
+  if (text.isEmpty) return text;
+  return text.split(' ').map((word) {
+    if (word.isEmpty) return word;
+    return word[0].toUpperCase() + word.substring(1).toLowerCase();
+  }).join(' ');
+}
+
+const Map<String, IconData> categoryIcons = {
+  '📦': Icons.inventory_2,
+  '🍔': Icons.fastfood,
+  '🥤': Icons.local_drink,
+  '🛍️': Icons.shopping_bag,
+  '🏷️': Icons.local_offer,
+  '☕': Icons.local_cafe,
+  '🍰': Icons.cake,
+  '🍎': Icons.apple,
+  '📱': Icons.smartphone,
+  '💻': Icons.computer,
+  '👕': Icons.checkroom,
+  '💊': Icons.medical_services,
+  '🛠️': Icons.build,
+  '📚': Icons.menu_book,
+  '⚽': Icons.sports_soccer,
+  '🚗': Icons.directions_car,
+  '🏠': Icons.home,
+  '🎵': Icons.music_note,
+  '🐾': Icons.pets,
+  '🧩': Icons.extension,
+};
+
+Widget buildCategoryIcon(String iconKey, {double size = 24}) {
+  final iconData = categoryIcons[iconKey];
+  if (iconData != null) {
+    return Icon(iconData, size: size);
+  }
+  return Text(iconKey, style: TextStyle(fontSize: size));
+}

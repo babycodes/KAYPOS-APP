@@ -116,9 +116,9 @@ class UpdateService {
         // Eksekusi instalasi otomatis di Linux menggunakan pkexec
         ProcessResult result;
         if (filePath.endsWith('.rpm')) {
-          result = await Process.run('pkexec', ['dnf', 'localinstall', '-y', filePath]);
+          result = await Process.run('pkexec', ['dnf', 'reinstall', '-y', filePath]);
         } else {
-          result = await Process.run('pkexec', ['apt-get', 'install', '-y', filePath]);
+          result = await Process.run('pkexec', ['apt-get', 'install', '--reinstall', '-y', filePath]);
         }
         
         if (result.exitCode == 0) {

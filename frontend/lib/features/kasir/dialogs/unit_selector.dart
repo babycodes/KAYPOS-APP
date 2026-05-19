@@ -3,8 +3,9 @@ import '../../../core/helpers.dart';
 
 class UnitSelectorDialog extends StatefulWidget {
   final dynamic product;
+  final double availableStock;
   final Function(dynamic, String, num) onConfirm;
-  const UnitSelectorDialog({super.key, required this.product, required this.onConfirm});
+  const UnitSelectorDialog({super.key, required this.product, required this.availableStock, required this.onConfirm});
   @override
   State<UnitSelectorDialog> createState() => _UnitSelectorDialogState();
 }
@@ -28,7 +29,7 @@ class _UnitSelectorDialogState extends State<UnitSelectorDialog> {
   }
 
   Map<String, dynamic>? get selectedUnitData => (widget.product['units'] as List?)?.firstWhere((u) => u['unit_name'] == selectedUnit, orElse: () => null);
-  double get pricePerOne => selectedUnitData != null ? (selectedUnitData!['price'] as num) / (selectedUnitData!['qty_per_unit'] as num) : 0;
+  double get pricePerOne => selectedUnitData != null ? (selectedUnitData!['price'] as num).toDouble() : 0;
   double get totalPrice => pricePerOne * quantity;
 
   @override
@@ -53,9 +54,12 @@ class _UnitSelectorDialogState extends State<UnitSelectorDialog> {
         Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Pilih Satuan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
           const SizedBox(height: 8),
-          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 3,
+          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 2.5,
             children: units.map<Widget>((u) {
               final selected = selectedUnit == u['unit_name'];
+              final mult = (u['qty_per_unit'] as num?)?.toDouble() ?? 1;
+              final baseUnitName = (widget.product['base_unit'] as String?)?.isNotEmpty == true ? widget.product['base_unit'] : 'pcs';
+              
               return InkWell(onTap: () => setState(() => selectedUnit = u['unit_name']),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(padding: const EdgeInsets.all(12),
@@ -65,12 +69,29 @@ class _UnitSelectorDialogState extends State<UnitSelectorDialog> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(u['unit_name'], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: cs.onSurface)),
                     Text(fmtPrice(u['price'] ?? 0), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                    if (mult > 1)
+                      Text('(${mult == mult.roundToDouble() ? mult.round().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.') : mult.toString()} $baseUnitName)', style: TextStyle(fontSize: 10, color: cs.primary, fontWeight: FontWeight.w600)),
                   ])));
             }).toList()),
           const SizedBox(height: 20),
           // Quantity
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Jumlah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+            Row(children: [
+              Text('Jumlah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+              const SizedBox(width: 8),
+              InkWell(onTap: () {
+                final qtyPerUnit = (selectedUnitData?['qty_per_unit'] as num?)?.toDouble() ?? 1;
+                final maxAllowed = widget.availableStock == double.infinity ? double.infinity : (widget.availableStock / qtyPerUnit);
+                if (maxAllowed < double.infinity && maxAllowed > 0) {
+                  setState(() {
+                    quantity = maxAllowed;
+                    _qtyCtrl.text = maxAllowed == maxAllowed.roundToDouble() ? '${maxAllowed.round()}' : maxAllowed.toStringAsFixed(2);
+                  });
+                  Navigator.pop(context);
+                  widget.onConfirm(widget.product, selectedUnit, maxAllowed);
+                }
+              }, child: const Text('MAX', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue))),
+            ]),
             Container(
               width: 180,
               decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant)),
@@ -95,9 +116,8 @@ class _UnitSelectorDialogState extends State<UnitSelectorDialog> {
                   onChanged: (v) {
                     final val = double.tryParse(v.replaceAll(',', '.'));
                     if (val != null && val >= 0) {
-                      final maxStock = (widget.product['stock_quantity'] as num?)?.toDouble() ?? double.infinity;
                       final qtyPerUnit = (selectedUnitData?['qty_per_unit'] as num?)?.toDouble() ?? 1;
-                      final maxAllowed = maxStock == double.infinity ? double.infinity : (maxStock / qtyPerUnit);
+                      final maxAllowed = widget.availableStock == double.infinity ? double.infinity : (widget.availableStock / qtyPerUnit);
                       
                       if (val > maxAllowed) {
                         setState(() {
@@ -111,9 +131,8 @@ class _UnitSelectorDialogState extends State<UnitSelectorDialog> {
                   },
                 )),
                 InkWell(onTap: () {
-                  final maxStock = (widget.product['stock_quantity'] as num?)?.toDouble() ?? double.infinity;
                   final qtyPerUnit = (selectedUnitData?['qty_per_unit'] as num?)?.toDouble() ?? 1;
-                  final maxAllowed = maxStock == double.infinity ? double.infinity : (maxStock / qtyPerUnit);
+                  final maxAllowed = widget.availableStock == double.infinity ? double.infinity : (widget.availableStock / qtyPerUnit);
                   
                   if (quantity + 1 <= maxAllowed) {
                     setState(() { 

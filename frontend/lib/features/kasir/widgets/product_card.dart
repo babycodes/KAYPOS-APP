@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import '../../../core/helpers.dart';
 
 class ProductCard extends StatelessWidget {
   final dynamic product;
-  final int heldQty;
+  final double bookedQty;
   final Function(dynamic) onSelect;
-  const ProductCard({super.key, required this.product, required this.heldQty, required this.onSelect});
+  const ProductCard({super.key, required this.product, required this.bookedQty, required this.onSelect});
 
   Color _categoryColor(String? name, ColorScheme cs) {
     if (name == null || name.isEmpty) return cs.primary;
@@ -23,11 +24,16 @@ class ProductCard extends StatelessWidget {
     final hasMultiUnits = units.length > 1;
     final categoryIcon = product['category_icon'] ?? '📦';
     final categoryName = product['category_name'] as String?;
+    
+    final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
+    final baseUnitData = units.firstWhere((u) => u['unit_name'] == baseUnitName, orElse: () => units.isNotEmpty ? units.first : null);
+    final baseUnitPrice = baseUnitData != null ? baseUnitData['price'] ?? 0 : 0;
+    final displayUnitName = baseUnitData != null ? baseUnitData['unit_name'] : baseUnitName;
     final accentColor = _categoryColor(categoryName, cs);
     final realStock = (product['stock_quantity'] as num?)?.toDouble() ?? double.infinity;
     final isReallyEmpty = realStock <= 0 && realStock != double.infinity;
-    final availableStock = realStock == double.infinity ? double.infinity : (realStock - heldQty).clamp(0.0, double.infinity);
-    final isBookedOut = !isReallyEmpty && availableStock <= 0 && heldQty > 0;
+    final availableStock = realStock == double.infinity ? double.infinity : (realStock - bookedQty).clamp(0.0, double.infinity);
+    final isBookedOut = !isReallyEmpty && availableStock <= 0 && bookedQty > 0;
     final blocked = isReallyEmpty || isBookedOut;
 
     return Opacity(
@@ -38,13 +44,13 @@ class ProductCard extends StatelessWidget {
         child: InkWell(
           onTap: blocked ? null : () => onSelect(product),
           borderRadius: BorderRadius.circular(8),
-          splashColor: accentColor.withValues(alpha: 0.2),
-          hoverColor: accentColor.withValues(alpha: 0.08),
+          splashColor: (isDark ? Colors.deepPurpleAccent : cs.primary).withValues(alpha: 0.2),
+          hoverColor: (isDark ? Colors.deepPurpleAccent : cs.primary).withValues(alpha: 0.08),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: isDark ? accentColor.withValues(alpha: 0.1) : accentColor.withValues(alpha: 0.05),
-              border: Border.all(color: accentColor.withValues(alpha: isDark ? 0.25 : 0.2)),
+              color: isDark ? Colors.deepPurpleAccent.withValues(alpha: 0.15) : cs.primary.withValues(alpha: 0.05),
+              border: Border.all(color: isDark ? Colors.deepPurpleAccent.withValues(alpha: 0.5) : cs.primary.withValues(alpha: 0.3)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Stack(clipBehavior: Clip.none, children: [
@@ -53,7 +59,7 @@ class ProductCard extends StatelessWidget {
                 Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(
-                    color: isDark ? accentColor.withValues(alpha: 0.2) : accentColor.withValues(alpha: 0.1),
+                    color: isDark ? Colors.deepPurpleAccent.withValues(alpha: 0.2) : cs.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -69,23 +75,27 @@ class ProductCard extends StatelessWidget {
                       child: Container(
                         alignment: Alignment.centerLeft,
                         child: AutoSizeText(
-                          product['name'] ?? '',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: MediaQuery.sizeOf(context).width < 768 ? 12 : 14, color: cs.onSurface, height: 1.1),
-                          maxLines: 2, 
+                          toTitleCase(product['name'] ?? ''),
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: MediaQuery.sizeOf(context).width < 768 ? 12 : 14, color: Colors.white, height: 1.1),
+                          maxLines: 1, 
                           minFontSize: 8,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
-                    if (product['barcode'] != null && product['barcode'].toString().isNotEmpty)
+                    if (units.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(product['barcode'].toString(), style: TextStyle(fontSize: 9, color: cs.onSurfaceVariant.withValues(alpha: 0.8), height: 1.1), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('${fmtPrice(baseUnitPrice)} / $displayUnitName', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.greenAccent, height: 1.1)),
+                        ),
                       ),
                     if (realStock != double.infinity)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text('Stok: ${availableStock.round()}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: availableStock <= 0 ? cs.error : accentColor)),
+                        child: Text('Stok: ${formatStock(availableStock, units, product['base_unit'] as String?)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: availableStock <= 0 ? Colors.redAccent : Colors.grey[300]), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                   ],
                 )),

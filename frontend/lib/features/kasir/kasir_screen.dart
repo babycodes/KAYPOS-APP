@@ -50,7 +50,6 @@ class _KasirScreenState extends State<KasirScreen> {
   List<dynamic> heldCarts = [];
   List<dynamic> lowStockItems = [];
   List<dynamic> outOfStockItems = [];
-  Timer? _pollTimer;
   int _mobileNavIndex = 0;
 
   double get cartTotal => cart.fold(0.0, (s, i) => s + (i['unit_price'] as num) * (i['quantity'] as num));
@@ -74,12 +73,11 @@ class _KasirScreenState extends State<KasirScreen> {
       _loadDashboard();
       _loadHeldCarts();
       _loadLowStock();
-      _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadHeldCarts());
     });
   }
 
   @override
-  void dispose() { _pollTimer?.cancel(); super.dispose(); }
+  void dispose() { super.dispose(); }
 
   void _closeAllModals() {
     showDashboard = false; showHistory = false; showProfile = false;
@@ -126,24 +124,140 @@ class _KasirScreenState extends State<KasirScreen> {
     if (units == null) return 0;
     final unit = units.firstWhere((u) => u['unit_name'] == unitName, orElse: () => null);
     if (unit == null) return 0;
-    return (unit['price'] as num) / (unit['qty_per_unit'] as num);
+    return (unit['price'] as num).toDouble();
   }
 
-  int _getHeldQty(int productId) {
-    int sum = 0;
+  double _getHeldQty(int productId) {
+    double sum = 0;
     for (final hc in heldCarts) {
       for (final i in (hc['cart_data'] as List? ?? [])) {
-        if (i['product']?['id'] == productId) sum += (i['quantity'] as num?)?.toInt() ?? 0;
+        if (i['product']?['id'] == productId) {
+          final units = i['product']?['units'] as List? ?? [];
+          final unitName = i['selected_unit'];
+          final unit = units.firstWhere((u) => u['unit_name'] == unitName, orElse: () => null);
+          final multiplier = (unit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+          sum += ((i['quantity'] as num?)?.toDouble() ?? 0) * multiplier;
+        }
       }
     }
     return sum;
   }
 
+  double _getBookedStock(int productId) {
+    double booked = 0;
+    for (final item in cart) {
+      if (item['product']['id'] == productId) {
+        final units = item['product']['units'] as List? ?? [];
+        final unitName = item['selected_unit'];
+        final unit = units.firstWhere((u) => u['unit_name'] == unitName, orElse: () => null);
+        final multiplier = (unit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+        booked += (item['quantity'] as num).toDouble() * multiplier;
+      }
+    }
+    return booked;
+  }
+  
+  void _applyMaxSplit(dynamic product) {
+    cart.removeWhere((i) => i['product']['id'] == product['id']);
+    double remaining = (product['stock_quantity'] as num?)?.toDouble() ?? 0;
+    if (remaining <= 0) return;
+    
+    final units = List.from(product['units'] as List? ?? []);
+    units.sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
+    
+    for (final unit in units) {
+      final mult = (unit['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      if (mult <= 0) continue;
+      final qty = (remaining / mult).floorToDouble();
+      if (qty > 0) {
+        cart.add({
+          'product': product, 
+          'selected_unit': unit['unit_name'], 
+          'quantity': qty, 
+          'unit_price': _calcUnitPrice(product, unit['unit_name'])
+        });
+        remaining = remaining - (qty * mult);
+      }
+    }
+    if (remaining > 0.001) {
+      final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
+      cart.add({
+        'product': product, 
+        'selected_unit': baseUnitName, 
+        'quantity': double.parse(remaining.toStringAsFixed(2)), 
+        'unit_price': _calcUnitPrice(product, baseUnitName)
+      });
+    }
+    setState((){});
+  }
+
+  void _consolidateProductCart(dynamic product) {
+    final units = List.from(product['units'] as List? ?? []);
+    if (units.length <= 1) return; // Only consolidate multi-unit products
+
+    double totalBaseQtyInCart = 0;
+    units.sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
+
+    int firstIndex = -1;
+    for (int i = 0; i < cart.length; i++) {
+      final c = cart[i];
+      if (c['product']['id'] == product['id']) {
+        if (firstIndex == -1) firstIndex = i;
+        final cUnit = units.firstWhere((u) => u['unit_name'] == c['selected_unit'], orElse: () => null);
+        final mult = (cUnit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+        totalBaseQtyInCart += (c['quantity'] as num) * mult;
+      }
+    }
+
+    if (totalBaseQtyInCart <= 0.001) return;
+
+    cart.removeWhere((c) => c['product']['id'] == product['id']);
+
+    double remaining = totalBaseQtyInCart;
+    List<Map<String, dynamic>> newItems = [];
+
+    for (final unit in units) {
+      final mult = (unit['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      if (mult <= 0) continue;
+      final qty = (remaining / mult).floorToDouble();
+      if (qty > 0) {
+        newItems.add({
+          'product': product, 
+          'selected_unit': unit['unit_name'], 
+          'quantity': qty, 
+          'unit_price': _calcUnitPrice(product, unit['unit_name'])
+        });
+        remaining = remaining - (qty * mult);
+      }
+    }
+    
+    if (remaining > 0.001) {
+      final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
+      newItems.add({
+        'product': product, 
+        'selected_unit': baseUnitName, 
+        'quantity': double.parse(remaining.toStringAsFixed(2)), 
+        'unit_price': _calcUnitPrice(product, baseUnitName)
+      });
+    }
+    
+    if (firstIndex != -1 && firstIndex <= cart.length) {
+      cart.insertAll(firstIndex, newItems);
+    } else {
+      cart.addAll(newItems);
+    }
+  }
+
   void _handleProductSelect(dynamic product) {
     final units = product['units'] as List? ?? [];
+    final booked = _getBookedStock(product['id']);
+    final held = _getHeldQty(product['id']);
+    final availableStock = (product['stock_quantity'] as num?)?.toDouble() ?? double.infinity;
+    final trueAvailable = availableStock == double.infinity ? double.infinity : availableStock - booked - held;
+    
     if (units.length > 1) {
       showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-        builder: (_) => UnitSelectorDialog(product: product, onConfirm: _addToCart));
+        builder: (_) => UnitSelectorDialog(product: product, availableStock: trueAvailable, onConfirm: _addToCart));
     } else {
       _addToCart(product, units.isNotEmpty ? units[0]['unit_name'] : 'pcs', 1);
     }
@@ -171,7 +285,10 @@ class _KasirScreenState extends State<KasirScreen> {
     
     final realStock = (product['stock_quantity'] as num?)?.toDouble() ?? double.infinity;
     if (realStock == double.infinity) {
-      setState(() => cart[i]['quantity'] = qty);
+      setState(() { 
+        cart[i]['quantity'] = qty;
+        _consolidateProductCart(product);
+      });
       return;
     }
     
@@ -200,7 +317,10 @@ class _KasirScreenState extends State<KasirScreen> {
       showToast(context, 'Stok maksimal: ${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 2)} $unitName');
     }
     
-    setState(() => cart[i]['quantity'] = qty);
+    setState(() {
+      cart[i]['quantity'] = qty;
+      _consolidateProductCart(product);
+    });
   }
 
   Future<void> _handleCheckout(double paidAmount) async {
@@ -306,7 +426,7 @@ class _KasirScreenState extends State<KasirScreen> {
             if (heldCarts.isNotEmpty) ...[
               const SizedBox(width: 8),
               _toolbarBtn(Icons.access_time, isMobile ? '' : 'Ditahan', color: cs.secondaryContainer, textColor: cs.onSecondaryContainer,
-                badge: heldCarts.length.toString(), onTap: () => setState(() { _closeAllModals(); showHeldCarts = true; })),
+                badge: heldCarts.length.toString(), onTap: () { setState(() { _closeAllModals(); showHeldCarts = true; }); _loadHeldCarts(); }),
             ],
             const SizedBox(width: 4),
             // Lock button
@@ -349,16 +469,16 @@ class _KasirScreenState extends State<KasirScreen> {
                 ]))
               : GridView.builder(
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: isMobile ? 180 : 220,
-                    mainAxisExtent: 56, crossAxisSpacing: 6, mainAxisSpacing: 6),
+                    maxCrossAxisExtent: isMobile ? 216 : 264,
+                    mainAxisExtent: 68, crossAxisSpacing: 6, mainAxisSpacing: 6),
                   itemCount: filteredProducts.length,
-                  itemBuilder: (_, i) => ProductCard(product: filteredProducts[i], heldQty: _getHeldQty(filteredProducts[i]['id']), onSelect: _handleProductSelect),
+                  itemBuilder: (_, i) => ProductCard(product: filteredProducts[i], bookedQty: _getHeldQty(filteredProducts[i]['id']) + _getBookedStock(filteredProducts[i]['id']), onSelect: _handleProductSelect),
                 ),
           )),
 
           // Desktop Cart Sidebar
           if (!isMobile) Container(
-            width: MediaQuery.sizeOf(context).width > 1200 ? 360 : 320,
+            width: (MediaQuery.sizeOf(context).width * 0.40).clamp(320.0, 600.0),
             decoration: BoxDecoration(color: cs.surfaceContainerLow, border: Border(left: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)))),
             child: Column(children: [
               Padding(padding: const EdgeInsets.all(16), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -374,7 +494,7 @@ class _KasirScreenState extends State<KasirScreen> {
                 ? Center(child: Text('Keranjang Kosong', style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5), fontWeight: FontWeight.w500, fontSize: 14)))
                 : ListView.builder(padding: const EdgeInsets.all(12), itemCount: cart.length,
                     itemBuilder: (_, i) => Padding(padding: const EdgeInsets.only(bottom: 8),
-                      child: CartItemWidget(item: cart[i], onIncrement: () => _incrementItem(i), onDecrement: () => _decrementItem(i), onRemove: () => _removeItem(i), onSetQuantity: (q) => _setItemQuantity(i, q))))),
+                      child: CartItemWidget(item: cart[i], onIncrement: () => _incrementItem(i), onDecrement: () => _decrementItem(i), onRemove: () => _removeItem(i), onSetQuantity: (q) => _setItemQuantity(i, q), onMaxSplit: () => _applyMaxSplit(cart[i]['product']))))),
               const Divider(height: 1),
               Padding(padding: const EdgeInsets.all(16), child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -519,7 +639,7 @@ class _KasirScreenState extends State<KasirScreen> {
               const Divider(),
               Flexible(child: ListView.builder(shrinkWrap: true, itemCount: cart.length, padding: const EdgeInsets.all(12),
                 itemBuilder: (_, i) => Padding(padding: const EdgeInsets.only(bottom: 8),
-                  child: CartItemWidget(item: cart[i], onIncrement: () => _incrementItem(i), onDecrement: () => _decrementItem(i), onRemove: () => _removeItem(i))))),
+                  child: CartItemWidget(item: cart[i], onIncrement: () => _incrementItem(i), onDecrement: () => _decrementItem(i), onRemove: () => _removeItem(i), onSetQuantity: (q) => _setItemQuantity(i, q), onMaxSplit: () => _applyMaxSplit(cart[i]['product']))))),
               Padding(padding: const EdgeInsets.all(16), child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Total', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)), Text(fmtPrice(cartTotal), style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: cs.primary))]),
                 const SizedBox(height: 8),
