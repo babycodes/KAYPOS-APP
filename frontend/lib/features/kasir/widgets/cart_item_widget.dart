@@ -53,32 +53,13 @@ class _CartItemWidgetState extends State<CartItemWidget> {
     final selectedUnitName = widget.item['selected_unit'];
     final units = product['units'] as List? ?? [];
     final selectedUnit = units.firstWhere((u) => u['unit_name'] == selectedUnitName, orElse: () => null);
-    final multiplier = (selectedUnit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
-    final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
-
-    final totalBase = quantity * multiplier;
-    bool reachesHigherUnit = false;
-    for (final u in units) {
-      final qpu = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
-      if (qpu > multiplier && totalBase >= qpu) {
-        reachesHigherUnit = true;
-        break;
-      }
-    }
-
-    String formattedSubtitle;
-    if (reachesHigherUnit) {
-      formattedSubtitle = formatStock(totalBase, units, baseUnitName);
-    } else {
-      String unitDisplay;
-      if (multiplier > 1) {
-        final multStr = multiplier == multiplier.roundToDouble() ? '${multiplier.round()}' : multiplier.toStringAsFixed(2);
-        unitDisplay = '$multStr $baseUnitName';
-      } else {
-        unitDisplay = baseUnitName;
-      }
-      formattedSubtitle = '${qtyStr}x $unitDisplay';
-    }
+    
+    final formattedSubtitle = formatCartItemDisplay(
+      quantity,
+      selectedUnit,
+      units,
+      product['base_unit'] as String?,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

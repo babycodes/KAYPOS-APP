@@ -62,14 +62,23 @@ class _ReceiptModalState extends State<ReceiptModal> {
           // Items
           ConstrainedBox(constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.4),
             child: ListView(shrinkWrap: true, padding: const EdgeInsets.all(20), children: [
-              ...widget.details.map((d) => Padding(padding: const EdgeInsets.only(bottom: 8),
+              ...widget.details.map((d) {
+                final qty = (d['quantity'] as num?)?.toDouble() ?? 0.0;
+                final formattedUnit = formatCartItemDisplay(
+                  qty,
+                  d['current_unit_data'],
+                  d['product_units'] as List<dynamic>?,
+                  d['base_unit'] as String?,
+                );
+                return Padding(padding: const EdgeInsets.only(bottom: 8),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(d['product_name'] ?? '', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: cs.onSurface)),
-                    Text('${d['quantity']} ${d['unit_used']} × ${fmtPrice(d['sold_price'] ?? 0)}', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                    Text('$formattedUnit × ${fmtPrice(d['sold_price'] ?? 0)}', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
                   ])),
                   Text(fmtPrice(d['subtotal'] ?? 0), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: cs.onSurface)),
-                ]))),
+                ]));
+              }),
               Divider(color: cs.outlineVariant),
               _row('Total', fmtPrice(widget.transaction['total_amount'] ?? 0), cs, bold: true),
               _row('Bayar', fmtPrice(widget.transaction['paid_amount'] ?? 0), cs),

@@ -69,6 +69,38 @@ String formatStock(num baseStock, List<dynamic>? units, String? baseUnit) {
   return '$bStr $bUnit';
 }
 
+String formatCartItemDisplay(double qty, dynamic currentUnitData, List<dynamic>? productUnits, String? baseUnit) {
+  final bUnit = (baseUnit == null || baseUnit.trim().isEmpty) ? 'pcs' : baseUnit.trim();
+  final currentMultiplier = (currentUnitData?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+  final totalBase = qty * currentMultiplier;
+
+  if (productUnits != null && productUnits.isNotEmpty) {
+    final sortedUnits = List.from(productUnits)..sort((a, b) => ((b['qty_per_unit'] as num?) ?? 1).compareTo((a['qty_per_unit'] as num?) ?? 1));
+    
+    double largestValidMultiplier = 0.0;
+    for (final u in sortedUnits) {
+      final qpu = (u['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+      if (totalBase >= qpu) {
+        largestValidMultiplier = qpu;
+        break;
+      }
+    }
+
+    if (largestValidMultiplier > currentMultiplier) {
+      return formatStock(totalBase, productUnits, baseUnit);
+    }
+  }
+
+  final qtyStr = qty == qty.roundToDouble() ? '${qty.round()}' : qty.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  
+  if (currentMultiplier > 1) {
+    final multStr = currentMultiplier == currentMultiplier.roundToDouble() ? '${currentMultiplier.round()}' : currentMultiplier.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    return '${qtyStr}x $multStr $bUnit';
+  } else {
+    return '${qtyStr}x $bUnit';
+  }
+}
+
 String toTitleCase(String text) {
   if (text.isEmpty) return text;
   return text.split(' ').map((word) {

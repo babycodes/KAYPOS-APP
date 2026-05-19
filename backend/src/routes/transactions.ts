@@ -83,9 +83,17 @@ transactions.post("/", async (c) => {
     stmtStock.run(d.stock_deduct, d.product_id);
   }
 
+  const finalDetails = db.prepare("SELECT * FROM transaction_details WHERE transaction_id = ?").all(txId) as any[];
+  for (const d of finalDetails) {
+    const p = db.prepare("SELECT base_unit FROM products WHERE id = ?").get(d.product_id) as any;
+    d.base_unit = p?.base_unit || 'pcs';
+    d.product_units = db.prepare("SELECT * FROM product_units WHERE product_id = ?").all(d.product_id);
+    d.current_unit_data = d.product_units.find((u: any) => u.unit_name === d.unit_used);
+  }
+
   return c.json({
     transaction: db.prepare("SELECT * FROM transactions WHERE id = ?").get(txId),
-    details: db.prepare("SELECT * FROM transaction_details WHERE transaction_id = ?").all(txId)
+    details: finalDetails
   }, 201);
 });
 
@@ -112,7 +120,14 @@ transactions.get("/today", (c) => {
 transactions.get("/:id", (c) => {
   const tx = db.prepare("SELECT * FROM transactions WHERE id = ?").get(c.req.param("id"));
   if (!tx) return c.json({ error: "Transaksi tidak ditemukan" }, 404);
-  return c.json({ transaction: tx, details: db.prepare("SELECT * FROM transaction_details WHERE transaction_id = ?").all(c.req.param("id")) });
+  const details = db.prepare("SELECT * FROM transaction_details WHERE transaction_id = ?").all(c.req.param("id")) as any[];
+  for (const d of details) {
+    const p = db.prepare("SELECT base_unit FROM products WHERE id = ?").get(d.product_id) as any;
+    d.base_unit = p?.base_unit || 'pcs';
+    d.product_units = db.prepare("SELECT * FROM product_units WHERE product_id = ?").all(d.product_id);
+    d.current_unit_data = d.product_units.find((u: any) => u.unit_name === d.unit_used);
+  }
+  return c.json({ transaction: tx, details });
 });
 
 export default transactions;
