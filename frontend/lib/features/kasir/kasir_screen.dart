@@ -357,15 +357,6 @@ class _KasirScreenState extends State<KasirScreen> {
         }
         _loadDashboard(); _loadData();
         
-        // Auto print receipt if printer is connected
-        if (PrinterService().isConnected) {
-          try {
-            final printRes = await Api.post('/print/receipt', body: {'transaction_id': result['transaction']['id']});
-            if (printRes['success'] == true && printRes['receipt_base64'] != null) {
-              await PrinterService().printReceipt(base64Decode(printRes['receipt_base64']).toList());
-            }
-          } catch (_) {}
-        }
         
         showDialog(context: context, builder: (_) => ReceiptModal(transaction: result['transaction'], details: List<Map<String, dynamic>>.from(result['details'])));
       }

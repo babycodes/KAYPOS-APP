@@ -19,10 +19,6 @@ class _SettingsPageState extends State<SettingsPage> {
   List<int>? restoreFileBytes;
   bool saving = false;
   String restoreMsg = '';
-  
-  List<dynamic> detectedPrinters = [];
-  bool detecting = false;
-  String testMsg = '';
 
   final UpdateService _updateService = UpdateService();
   bool _isCheckingUpdate = false;
@@ -31,13 +27,11 @@ class _SettingsPageState extends State<SettingsPage> {
   final _storeNameCtrl = TextEditingController();
   final _storeAddressCtrl = TextEditingController();
   final _storePhoneCtrl = TextEditingController();
-  final _printerPortCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
-    _detectPrinters();
   }
 
   Future<void> _loadSettings() async {
@@ -48,39 +42,8 @@ class _SettingsPageState extends State<SettingsPage> {
         _storeNameCtrl.text = settings['store_name'] ?? '';
         _storeAddressCtrl.text = settings['store_address'] ?? '';
         _storePhoneCtrl.text = settings['store_phone'] ?? '';
-        _printerPortCtrl.text = settings['printer_port'] ?? '';
       });
     } catch (_) {}
-  }
-
-  Future<void> _detectPrinters() async {
-    setState(() => detecting = true);
-    try {
-      final res = await Api.get('/print/detect');
-      setState(() {
-        detectedPrinters = res['printers'] ?? [];
-        if (res['current'] != null) {
-          _printerPortCtrl.text = res['current'];
-        }
-      });
-    } catch (_) {
-      setState(() => detectedPrinters = []);
-    }
-    setState(() => detecting = false);
-  }
-
-  void _selectPrinter(String path) {
-    setState(() => _printerPortCtrl.text = path);
-  }
-
-  Future<void> _testPrint() async {
-    setState(() => testMsg = '');
-    try {
-      final res = await Api.post('/print/test');
-      setState(() => testMsg = '✅ ${res['message'] ?? 'Test print berhasil!'}');
-    } catch (e) {
-      setState(() => testMsg = '❌ ${e.toString().replaceFirst('Exception: ', '')}');
-    }
   }
 
   Future<void> _saveSettings() async {
@@ -90,7 +53,6 @@ class _SettingsPageState extends State<SettingsPage> {
         'store_name': _storeNameCtrl.text,
         'store_address': _storeAddressCtrl.text,
         'store_phone': _storePhoneCtrl.text,
-        'printer_port': _printerPortCtrl.text,
       });
       if (mounted) showToast(context, 'Pengaturan tersimpan');
     } catch (e) {
@@ -249,52 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 12),
             _Field('NO. TELP', _storePhoneCtrl),
           ]),
-          const SizedBox(height: 24),
-
-          // Printer
-          _SectionBox(cs, title: 'Printer Thermal', icon: Icons.print, action: TextButton.icon(
-            onPressed: detecting ? null : _detectPrinters,
-            icon: detecting ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh, size: 16),
-            label: Text(detecting ? 'Mendeteksi...' : 'Deteksi Ulang', style: const TextStyle(fontSize: 12)),
-          ), children: [
-            if (detectedPrinters.isNotEmpty) ...[
-              Text('Printer terdeteksi:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cs.onSurfaceVariant)),
-              const SizedBox(height: 8),
-              ...detectedPrinters.map((p) {
-                final isActive = _printerPortCtrl.text == p['path'];
-                return Padding(padding: const EdgeInsets.only(bottom: 8), child: InkWell(onTap: () => _selectPrinter(p['path']), borderRadius: BorderRadius.circular(12), child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: isActive ? cs.primaryContainer : cs.surfaceContainer, border: Border.all(color: isActive ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3)), borderRadius: BorderRadius.circular(12)),
-                  child: Row(children: [
-                    Icon(Icons.print, color: isActive ? cs.primary : cs.onSurfaceVariant),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(p['name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurface)),
-                      Text(p['path'] ?? '', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: cs.onSurfaceVariant)),
-                    ])),
-                    if (p['writable'] == true)
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)), child: const Text('OK', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)))
-                    else
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: cs.errorContainer, borderRadius: BorderRadius.circular(4)), child: Text('No Access', style: TextStyle(color: cs.error, fontSize: 10, fontWeight: FontWeight.bold))),
-                    if (isActive) ...[const SizedBox(width: 8), Icon(Icons.check, color: cs.primary, size: 20)]
-                  ]),
-                )));
-              }).toList(),
-            ] else if (!detecting) ...[
-              Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(12)), child: Center(child: Column(children: [
-                Text('Tidak ada printer terdeteksi', style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('Hubungkan printer USB lalu tekan "Deteksi Ulang"', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.8))),
-              ]))),
-            ],
-            const SizedBox(height: 16),
-            _Field('PORT PRINTER (MANUAL)', _printerPortCtrl, hint: '/dev/usb/lp0'),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _testPrint, icon: const Icon(Icons.print, size: 16), label: const Text('Test Print', style: TextStyle(fontWeight: FontWeight.bold)),
-              style: FilledButton.styleFrom(backgroundColor: cs.tertiaryContainer, foregroundColor: cs.onTertiaryContainer, minimumSize: const Size(double.infinity, 48)),
-            ),
-            if (testMsg.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Center(child: Text(testMsg, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: testMsg.contains('✅') ? Colors.green : cs.error)))),
           ]),
           const SizedBox(height: 24),
 
