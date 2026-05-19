@@ -35,7 +35,14 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
 
     _subscription?.cancel();
     _subscription = _printerService.scan(defaultPrinterType).listen((device) {
-      if (!devices.any((d) => d.address == device.address)) {
+      bool exists = devices.any((d) {
+        if (defaultPrinterType == PrinterType.bluetooth) {
+          return d.address == device.address && d.address != null && d.address!.isNotEmpty;
+        } else {
+          return d.name == device.name;
+        }
+      });
+      if (!exists && device.name != null && device.name!.isNotEmpty) {
         setState(() {
           devices.add(device);
         });

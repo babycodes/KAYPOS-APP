@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platform_image_3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class PrinterService {
@@ -46,15 +47,25 @@ class PrinterService {
     }
   }
 
-  Stream<PrinterDevice> scan(PrinterType type) {
-    if (kIsWeb) return const Stream.empty();
-    return _printerManager.discovery(type: type);
+  Stream<PrinterDevice> scan(PrinterType type) async* {
+    if (kIsWeb) return;
+    if (!kIsWeb && Platform.isLinux && type == PrinterType.usb) {
+      final file = File('/dev/usb/lp0');
+      if (file.existsSync()) {
+        yield PrinterDevice(name: 'Linux USB Printer (lp0)', address: '/dev/usb/lp0', vendorId: 'linux_lp0', productId: 'linux_lp0');
+      }
+      return;
+    }
+    yield* _printerManager.discovery(type: type);
   }
 
   Future<void> connect(PrinterDevice device, PrinterType type) async {
     if (kIsWeb) throw Exception('Koneksi printer langsung tidak didukung di Web');
     _selectedPrinter = device;
-    if (type == PrinterType.bluetooth) {
+    if (!kIsWeb && Platform.isLinux && type == PrinterType.usb) {
+      // Bypasses manager and just sets connected flag
+      _isConnected = true;
+    } else if (type == PrinterType.bluetooth) {
       await _printerManager.connect(
         type: PrinterType.bluetooth,
         model: BluetoothPrinterInput(
@@ -101,6 +112,17 @@ class PrinterService {
     final type = savedTypeStr == 'usb' ? PrinterType.usb : PrinterType.bluetooth;
     
     if (!_isConnected) await connect(_selectedPrinter!, type);
+    
+    if (!kIsWeb && Platform.isLinux && type == PrinterType.usb) {
+      try {
+        final file = File('/dev/usb/lp0');
+        await file.writeAsBytes(bytes, mode: FileMode.append);
+      } catch (e) {
+        throw Exception("Gagal print ke /dev/usb/lp0. Pastikan user masuk group 'lp': $e");
+      }
+      return;
+    }
+    
     await _printerManager.send(type: type, bytes: bytes);
   }
 }
