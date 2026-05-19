@@ -92,8 +92,21 @@ print.post("/receipt", async (c) => {
   for (const d of details) {
     // Product name (full line)
     receipt += d.product_name + "\n";
+    
+    const product = db.prepare("SELECT base_unit FROM products WHERE id = ?").get(d.product_id) as any;
+    const baseUnit = product ? (product.base_unit || 'pcs') : 'pcs';
+    const unitDef = db.prepare("SELECT qty_per_unit FROM product_units WHERE product_id = ? AND unit_name = ?").get(d.product_id, d.unit_used) as any;
+    const multiplier = unitDef ? unitDef.qty_per_unit : 1;
+    
+    let displayUnit = d.unit_used;
+    if (multiplier > 1) {
+      displayUnit = `${multiplier} ${baseUnit}`;
+    } else {
+      displayUnit = baseUnit;
+    }
+
     // Qty x Price = Subtotal (right-aligned)
-    const qtyInfo = `  ${d.quantity} ${d.unit_used} x ${formatRp(d.sold_price)}`;
+    const qtyInfo = `  ${d.quantity}x ${displayUnit} @ ${formatRp(d.sold_price)}`;
     const subtotal = formatRp(d.subtotal);
     receipt += padLine(qtyInfo, subtotal) + "\n";
   }

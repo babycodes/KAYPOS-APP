@@ -49,6 +49,21 @@ class _CartItemWidgetState extends State<CartItemWidget> {
     final subtotal = unitPrice * quantity;
     final qtyStr = quantity == quantity.roundToDouble() ? '${quantity.round()}' : quantity.toStringAsFixed(1);
 
+    final product = widget.item['product'];
+    final selectedUnitName = widget.item['selected_unit'];
+    final units = product['units'] as List? ?? [];
+    final selectedUnit = units.firstWhere((u) => u['unit_name'] == selectedUnitName, orElse: () => null);
+    final multiplier = (selectedUnit?['qty_per_unit'] as num?)?.toDouble() ?? 1.0;
+    final baseUnitName = (product['base_unit'] as String?)?.isNotEmpty == true ? product['base_unit'] : 'pcs';
+
+    String unitDisplay;
+    if (multiplier > 1) {
+      final multStr = multiplier == multiplier.roundToDouble() ? '${multiplier.round()}' : multiplier.toStringAsFixed(2);
+      unitDisplay = '$multStr $baseUnitName';
+    } else {
+      unitDisplay = baseUnitName;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: cs.surfaceContainerLow, borderRadius: BorderRadius.circular(10), border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4))),
@@ -57,7 +72,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(widget.item['product']['name'] ?? '', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: cs.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 1),
-          Text('${fmtPrice(unitPrice)} × $qtyStr ${widget.item['selected_unit']}', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+          Text('${fmtPrice(unitPrice)} × ${qtyStr}x $unitDisplay', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
         ])),
         const SizedBox(width: 4),
         // Subtotal

@@ -433,8 +433,6 @@ class _KasirScreenState extends State<KasirScreen> {
               if (auth.isAdmin) ...[const SizedBox(width: 4), _toolbarBtn(Icons.settings, 'Admin', color: cs.tertiaryContainer, textColor: cs.onTertiaryContainer, onTap: () => context.go('/admin'))],
               const SizedBox(width: 4),
               _toolbarBtn(Icons.print, 'Printer', onTap: () { setState(() => _closeAllModals()); showDialog(context: context, builder: (_) => const PrinterSettingsDialog()); }),
-              const SizedBox(width: 4),
-              _toolbarBtn(Icons.logout, 'Keluar', color: cs.errorContainer.withValues(alpha: 0.5), textColor: cs.error, onTap: _handleLogout),
             ],
             // Stock alert indicator
             if (lowStockItems.isNotEmpty || outOfStockItems.isNotEmpty) ...[
@@ -453,6 +451,10 @@ class _KasirScreenState extends State<KasirScreen> {
             if (isMobile) ...[
               const SizedBox(width: 4),
               _toolbarBtn(Icons.print, '', onTap: () { setState(() => _closeAllModals()); showDialog(context: context, builder: (_) => const PrinterSettingsDialog()); }),
+            ],
+            if (!isMobile) ...[
+              const SizedBox(width: 4),
+              _toolbarBtn(Icons.logout, 'Keluar', color: cs.errorContainer.withValues(alpha: 0.5), textColor: cs.error, onTap: _handleLogout),
             ],
             const SizedBox(width: 4),
             // Lock button
