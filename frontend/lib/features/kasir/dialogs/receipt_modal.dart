@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../../core/api.dart';
 import '../../../core/helpers.dart';
 import '../../../services/printer_service.dart';
-
+import '../../../services/receipt_generator.dart';
 class ReceiptModal extends StatefulWidget {
   final dynamic transaction;
   final List<Map<String, dynamic>> details;
@@ -23,14 +23,23 @@ class _ReceiptModalState extends State<ReceiptModal> {
         setState(() { _printMsg = '⚠️ Printer belum terhubung'; _printing = false; });
         return;
       }
-      final res = await Api.post('/print/receipt', body: {'transaction_id': widget.transaction['id']});
-      if (res['success'] == true && res['receipt_base64'] != null) {
-        final bytes = base64Decode(res['receipt_base64']);
-        await PrinterService().printReceipt(bytes.toList());
-        setState(() => _printMsg = '✅ Nota berhasil dicetak!');
-      } else {
-        setState(() => _printMsg = '⚠️ Gagal format nota');
+      
+      // Fetch settings
+      final settingsRes = await Api.get('/settings');
+      Map<String, dynamic> settings = {};
+      if (settingsRes != null && settingsRes is Map<String, dynamic>) {
+        settings = settingsRes;
       }
+      
+      // Generate receipt bytes locally using capability profile
+      final bytes = await ReceiptGenerator.generate(
+        transaction: widget.transaction,
+        details: widget.details,
+        settings: settings,
+      );
+      
+      await PrinterService().printReceipt(bytes);
+      setState(() => _printMsg = '✅ Nota berhasil dicetak!');
     } catch (e) {
       setState(() => _printMsg = '⚠️ ${e.toString().replaceFirst("Exception: ", "")}');
     }

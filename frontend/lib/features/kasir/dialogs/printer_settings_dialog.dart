@@ -5,6 +5,7 @@ import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platfor
 import '../../../services/printer_service.dart';
 import '../../../core/api.dart';
 import '../../../core/helpers.dart';
+import '../../../services/receipt_generator.dart';
 
 class PrinterSettingsDialog extends StatefulWidget {
   const PrinterSettingsDialog({super.key});
@@ -87,12 +88,17 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
         showToast(context, '⚠️ Printer belum terhubung');
         return;
       }
-      final res = await Api.post('/print/test');
-      if (res['success'] == true && res['receipt_base64'] != null) {
-        final bytes = base64Decode(res['receipt_base64']);
-        await _printerService.printReceipt(bytes.toList());
-        if (mounted) showToast(context, '✅ Test print berhasil');
+      
+      final settingsRes = await Api.get('/settings');
+      Map<String, dynamic> settings = {};
+      if (settingsRes != null && settingsRes is Map<String, dynamic>) {
+        settings = settingsRes;
       }
+
+      final bytes = await ReceiptGenerator.generateTestPrint(settings: settings);
+      await _printerService.printReceipt(bytes);
+      
+      if (mounted) showToast(context, '✅ Test print berhasil');
     } catch (e) {
       if (mounted) showToast(context, '❌ Gagal: $e');
     }
