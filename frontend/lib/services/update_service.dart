@@ -21,25 +21,37 @@ class UpdateService {
   // Pastikan Dio mengikuti redirect karena Worker membalas dengan 302 ke S3
   final Dio _dio = Dio(BaseOptions(followRedirects: true));
   
-  // Ganti dengan URL Worker Anda
-  final String _workerUrl = 'https://kaypos-worker-updater.wahyutkj-18.workers.dev/api/latest-release';
+  // Ganti dengan URL GitHub API (Bypass Cloudflare Worker)
+  final String _githubUrl = 'https://api.github.com/repos/babycodes/KAYPOS-APP/releases/latest';
   CancelToken? _cancelToken;
 
-  /// 1. Memeriksa pembaruan ke Cloudflare Worker
+  /// 1. Memeriksa pembaruan langsung ke GitHub Releases
   Future<UpdateInfo?> checkUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
-      final response = await _dio.get(_workerUrl);
+      final response = await _dio.get(_githubUrl);
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final String latestVersion = data['version'];
-        String releaseNotes = (data['releaseNotes'] ?? '').toString();
+        // GitHub API tag_name usually starts with 'v' (e.g. 'v1.0.16')
+        final String latestVersion = (data['tag_name'] as String).replaceFirst('v', '');
+        String releaseNotes = (data['body'] ?? '').toString();
         // Bersihkan link GitHub Changelog agar UI lebih rapi
         releaseNotes = releaseNotes.replaceAll(RegExp(r'\*\*Full Changelog\*\*.*', dotAll: true), '').trim();
-        final Map<String, dynamic> assetsUrls = data['assets'] ?? {};
+        
+        // Parse GitHub Assets
+        final List<dynamic> assets = data['assets'] ?? [];
+        Map<String, dynamic> assetsUrls = {};
+        for (var asset in assets) {
+          final name = asset['name'].toString().toLowerCase();
+          final url = asset['browser_download_url'];
+          if (name.endsWith('.apk')) assetsUrls['apk'] = url;
+          if (name.endsWith('.exe')) assetsUrls['exe'] = url;
+          if (name.endsWith('.deb')) assetsUrls['deb'] = url;
+          if (name.endsWith('.rpm')) assetsUrls['rpm'] = url;
+        }
 
         if (_isNewerVersion(currentVersion, latestVersion)) {
           final downloadUrl = _getDownloadUrlForCurrentPlatform(assetsUrls);
