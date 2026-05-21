@@ -1,0 +1,192 @@
+name: Cross-Platform Build Bridge
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'latest'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [build_release]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: android
+            build_cmd: flutter build apk --release
+            asset_path: frontend/build/app/outputs/flutter-apk/app-release.apk
+            asset_name: KAYPOS-Android.apk
+          - os: ubuntu-latest
+            target: linux
+            build_cmd: flutter build linux --release
+            asset_name: KAYPOS-Linux
+          - os: windows-latest
+            target: windows
+            build_cmd: flutter build windows --release
+            asset_path: frontend/build/windows/x64/runner/Release/
+            asset_name: KAYPOS-Windows-Installer.exe
+          - os: macos-latest
+            target: macos
+            build_cmd: flutter build macos --release
+            asset_name: KAYPOS-MacOS.zip
+
+    steps:
+      - name: Checkout Private Repository
+        uses: actions/checkout@v4
+        with:
+          repository: babycodes/KAYPOS-FLUTTER
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Java (for Android)
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Linux Dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config ninja-build libgtk-3-dev ruby ruby-dev rubygems build-essential
+          sudo gem install --no-document fpm
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Setup Android Keystore
+        if: matrix.target == 'android'
+        working-directory: frontend/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > app/upload-keystore.jks
+            echo "storePassword=${{ secrets.STORE_PASSWORD }}" > key.properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
+            echo "storeFile=upload-keystore.jks" >> key.properties
+          fi
+
+      - name: Build Application
+        working-directory: frontend
+        run: ${{ matrix.build_cmd }}
+
+      - name: Compress MacOS App
+        if: matrix.target == 'macos'
+        working-directory: frontend/build/macos/Build/Products/Release
+        run: zip -r KAYPOS-MacOS.zip Kaypos.app
+
+      - name: Build Windows Installer
+        if: matrix.target == 'windows'
+        working-directory: frontend/build/windows/x64/runner/Release
+        run: |
+          $Version = (Get-Content ../../../../../pubspec.yaml | Select-String "^version: ").ToString().Split(" ")[1].Split("+")[0]
+          if (-not $Version) { $Version = "1.0.0" }
+          $IssContent = @"
+          [Setup]
+          AppName=Kaypos
+          AppVersion=$Version
+          DefaultDirName={autopf}\Kaypos
+          DefaultGroupName=Kaypos
+          OutputDir=.
+          OutputBaseFilename=KAYPOS-Windows-Installer
+          Compression=lzma
+          SolidCompression=yes
+          [Files]
+          Source: "*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{group}\Kaypos"; Filename: "{app}\kaypos.exe"
+          Name: "{commondesktop}\Kaypos"; Filename: "{app}\kaypos.exe"; Tasks: desktopicon
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
+          "@
+          Set-Content -Path "setup.iss" -Value $IssContent -Encoding UTF8
+          iscc setup.iss
+
+      - name: Package Linux App (DEB & RPM)
+        if: matrix.target == 'linux'
+        working-directory: frontend
+        run: |
+          mkdir -p package_root/opt/kaypos
+          cp -r build/linux/x64/release/bundle/* package_root/opt/kaypos/
+          mv package_root/opt/kaypos/Kaypos package_root/opt/kaypos/kaypos
+          
+          mkdir -p package_root/usr/share/applications
+          cat <<EOF2 > package_root/usr/share/applications/kaypos.desktop
+          [Desktop Entry]
+          Version=1.0
+          Name=Kaypos
+          GenericName=Point of Sale
+          Comment=A modern Point of Sale application
+          Exec=/opt/kaypos/kaypos
+          Icon=kaypos
+          Terminal=false
+          Type=Application
+          Categories=Utility;
+          EOF2
+          
+          mkdir -p package_root/usr/bin
+          ln -s /opt/kaypos/kaypos package_root/usr/bin/kaypos
+          
+          mkdir -p package_root/usr/share/icons/hicolor/512x512/apps
+          cp assets/icon-512.png package_root/usr/share/icons/hicolor/512x512/apps/kaypos.png
+          
+          APP_VERSION=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          if [ -z "$APP_VERSION" ]; then APP_VERSION="1.0.0"; fi
+          
+          fpm -s dir -t deb -n kaypos -v $APP_VERSION -C package_root opt usr
+          fpm -s dir -t rpm -n kaypos -v $APP_VERSION -C package_root opt usr
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.target == 'macos' && 'frontend/build/macos/Build/Products/Release/KAYPOS-MacOS.zip' || '' }}
+            ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows-Installer.exe' || '' }}
+            ${{ matrix.target == 'linux' && 'frontend/kaypos*.deb' || '' }}
+            ${{ matrix.target == 'linux' && 'frontend/kaypos*.rpm' || '' }}
+            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' || '' }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'latest' }}
+          name: Release ${{ github.ref_type == 'tag' && github.ref_name || 'Latest' }}
+          files: artifacts/*
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
