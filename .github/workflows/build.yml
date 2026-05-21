@@ -35,7 +35,8 @@ jobs:
             build_cmd: flutter build windows --release
             asset_path: frontend/build/windows/x64/runner/Release/
             asset_name: KAYPOS-Windows-Installer.exe
-          - os: macos-latest
+
+    steps:
       - name: Checkout Private Repository
         uses: actions/checkout@v4
         with:
