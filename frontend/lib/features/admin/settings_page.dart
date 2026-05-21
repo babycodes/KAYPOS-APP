@@ -20,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool saving = false;
   String restoreMsg = '';
 
+  String _currentVersion = '';
   final UpdateService _updateService = UpdateService();
   bool _isCheckingUpdate = false;
   double _downloadProgress = 0.0;
@@ -32,6 +33,14 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) setState(() {
+      _currentVersion = packageInfo.version;
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -247,7 +256,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // Update System
-          _SectionBox(cs, title: 'Pembaruan Sistem', icon: Icons.system_update, children: [
+          _SectionBox(cs, title: 'Pembaruan Sistem', icon: Icons.system_update, action: _currentVersion.isEmpty ? null : Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(8)), child: Text('v$_currentVersion', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cs.primary))), children: [
             Text('Periksa versi terbaru aplikasi KAYPOS. Data produk, pengaturan, dan riwayat transaksi tidak akan hilang setelah pembaruan.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             const SizedBox(height: 16),
             FilledButton.icon(
