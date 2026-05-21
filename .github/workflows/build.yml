@@ -23,8 +23,8 @@ jobs:
         include:
           - os: ubuntu-latest
             target: android
-            build_cmd: flutter build apk --release
-            asset_path: frontend/build/app/outputs/flutter-apk/app-release.apk
+            build_cmd: flutter build apk --release --split-per-abi
+            asset_path: frontend/build/app/outputs/flutter-apk/*-release.apk
             asset_name: KAYPOS-Android.apk
           - os: ubuntu-latest
             target: linux
@@ -36,11 +36,6 @@ jobs:
             asset_path: frontend/build/windows/x64/runner/Release/
             asset_name: KAYPOS-Windows-Installer.exe
           - os: macos-latest
-            target: macos
-            build_cmd: flutter build macos --release
-            asset_name: KAYPOS-MacOS.zip
-
-    steps:
       - name: Checkout Private Repository
         uses: actions/checkout@v4
         with:
@@ -88,11 +83,6 @@ jobs:
       - name: Build Application
         working-directory: frontend
         run: ${{ matrix.build_cmd }}
-
-      - name: Compress MacOS App
-        if: matrix.target == 'macos'
-        working-directory: frontend/build/macos/Build/Products/Release
-        run: zip -r KAYPOS-MacOS.zip Kaypos.app
 
       - name: Build Windows Installer
         if: matrix.target == 'windows'
@@ -160,11 +150,10 @@ jobs:
         with:
           name: ${{ matrix.asset_name }}
           path: |
-            ${{ matrix.target == 'macos' && 'frontend/build/macos/Build/Products/Release/KAYPOS-MacOS.zip' || '' }}
             ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows-Installer.exe' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.deb' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.rpm' || '' }}
-            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' || '' }}
+            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/*-release.apk' || '' }}
 
   release:
     name: Create Release
