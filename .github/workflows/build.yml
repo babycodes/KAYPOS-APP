@@ -23,8 +23,8 @@ jobs:
         include:
           - os: ubuntu-latest
             target: android
-            build_cmd: flutter build apk --release --split-per-abi
-            asset_path: frontend/build/app/outputs/flutter-apk/*-release.apk
+            build_cmd: flutter build apk --release
+            asset_path: frontend/build/app/outputs/flutter-apk/app-release.apk
             asset_name: KAYPOS-Android.apk
           - os: ubuntu-latest
             target: linux
@@ -154,7 +154,7 @@ jobs:
             ${{ matrix.target == 'windows' && 'frontend/build/windows/x64/runner/Release/KAYPOS-Windows-Installer.exe' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.deb' || '' }}
             ${{ matrix.target == 'linux' && 'frontend/kaypos*.rpm' || '' }}
-            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/*-release.apk' || '' }}
+            ${{ matrix.target == 'android' && 'frontend/build/app/outputs/flutter-apk/app-release.apk' || '' }}
 
   release:
     name: Create Release
@@ -169,6 +169,14 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Delete Old Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${{ github.ref_type == 'tag' && github.ref_name || 'latest' }}
+          gh release delete $TAG_NAME -y || true
+          git push --delete origin $TAG_NAME || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
