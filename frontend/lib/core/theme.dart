@@ -29,14 +29,14 @@ class AppTheme {
   static const Color errorContainer = Color(0xFFFEE2E2);
   static const Color onErrorContainer = Color(0xFF7F1D1D);
 
-  static const Color surface = Color(0xFFF8FAFC);
-  static const Color surfaceDim = Color(0xFFE2E8F0);
-  static const Color surfaceBright = Color(0xFFFFFFFF);
+  static const Color surface = Color(0xFFFCF9F2);
+  static const Color surfaceDim = Color(0xFFE6E3DC);
+  static const Color surfaceBright = Color(0xFFFFFDFC);
   static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const Color surfaceContainerLow = Color(0xFFF1F5F9);
-  static const Color surfaceContainer = Color(0xFFE2E8F0);
-  static const Color surfaceContainerHigh = Color(0xFFCBD5E1);
-  static const Color surfaceContainerHighest = Color(0xFF94A3B8);
+  static const Color surfaceContainerLow = Color(0xFFF5F2EB);
+  static const Color surfaceContainer = Color(0xFFEFECE5);
+  static const Color surfaceContainerHigh = Color(0xFFE9E6DF);
+  static const Color surfaceContainerHighest = Color(0xFFE3E0D9);
   
   static const Color onSurface = Color(0xFF0F172A);
   static const Color onSurfaceVariant = Color(0xFF475569);

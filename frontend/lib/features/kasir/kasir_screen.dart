@@ -899,10 +899,9 @@ class _KasirScreenState extends State<KasirScreen> {
       textAlign: isPin ? TextAlign.center : TextAlign.start,
       style: TextStyle(fontSize: 14, color: cs.onSurface, letterSpacing: isPin ? 8 : 0),
       decoration: InputDecoration(hintText: hint, filled: true, fillColor: cs.surfaceContainer, isDense: true,
+        hintStyle: TextStyle(fontSize: 14, color: cs.onSurfaceVariant, letterSpacing: 0),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-
-
-),
+      ),
     ));
   }
 
